@@ -1,7 +1,7 @@
 import pdfplumber
 
 convo = "global"
-for i in range(2024, 2025):
+for i in range(2010, 2025):
 
     firstPage = 0
     lastPage = 0
@@ -10,7 +10,7 @@ for i in range(2024, 2025):
     # Abrir PDF
     with pdfplumber.open(f"../../data/convocatorias/{convo}/{i}-{convo}.pdf") as pdf:
 
-        # Para cada página
+        # For every page in the pdf
         for page in pdf.pages:
 
             # Extract pages of modality subject
@@ -24,7 +24,7 @@ for i in range(2024, 2025):
                 firstPage = page.page_number
                 continue
 
-            # Página extra en caso de que la haya
+            # Modality pages in case there are more
             if (
                 "UA" in extracted_text
                 and "Resultats globals per assignatura" in extracted_text
@@ -37,7 +37,7 @@ for i in range(2024, 2025):
                 lastPage = page.page_number
                 continue
 
-            # Obligatorias
+            # Extraction of the table of obligatory subjects
             if (
                 "Resultats globals per assignatura comuna" in extracted_text
                 and "Sistema Universitari Valencià" in extracted_text
@@ -50,7 +50,7 @@ for i in range(2024, 2025):
                     fila.append(0)
                 table.extend(extracted_table_special)
 
-        # Trauere la taula  de les asignatures de modalitat
+        # Extracts the table from the pages selected
         for extraction in range(firstPage, lastPage):
             page = pdf.pages[extraction - 1]
             extracted_table = page.extract_table()
@@ -61,7 +61,16 @@ for i in range(2024, 2025):
 
             table.extend(extracted_table)
 
+    # Converts all the numeric elements that where interpreted as strings to float (or int if has no decimals)
     for fila in table:
+        # Adds a new column to the table with the number of people that passed the obligatory phase
         fila.append(int(fila[3]) - int(fila[9]))
-        for i in range(1, len(fila) - 1):
-            fila[i] = int(float(fila[i].replace(",", ".")))
+        
+        for i in range(1, len(fila)):
+            if isinstance(fila[i], str):
+                fila[i] = fila[i].replace(",", ".")
+                if not fila[i].find(".") == -1:
+                    fila[i] = float(fila[i])
+                else:
+                    fila[i] = int(fila[i])
+    
