@@ -1,6 +1,5 @@
 import sqlite3
 import csv
-import random
 
 
 conn = sqlite3.connect("../../../data/notas-pau.db")
