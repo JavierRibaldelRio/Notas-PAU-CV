@@ -1,14 +1,14 @@
 import pdfplumber
 
 convo = "global"
-for i in range(2010, 2025):
+for year in range(2010, 2025):
 
     firstPage = 0
     lastPage = 0
     table = []
 
     # Abrir PDF
-    with pdfplumber.open(f"../../data/convocatorias/{convo}/{i}-{convo}.pdf") as pdf:
+    with pdfplumber.open(f"../../data/convocatorias/{convo}/{year}-{convo}.pdf") as pdf:
 
         # For every page in the pdf
         for page in pdf.pages:
@@ -73,4 +73,10 @@ for i in range(2010, 2025):
                     fila[i] = float(fila[i])
                 else:
                     fila[i] = int(fila[i])
+
+        # Adds two more columns to the table, with the year of the convocatory, and which convocatori
+        fila.append(year)
+        fila.append(convo)
+
+    #final order of the rows: subject, ... (like in the pdf), pass_obligatory_phase, year, convo.    
     
