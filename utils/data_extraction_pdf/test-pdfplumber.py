@@ -1,7 +1,7 @@
 import pdfplumber
 
-convo = "global"
-for year in range(2010, 2025):
+
+def extract_marks_from_pdf(convo, year):
 
     firstPage = 0
     lastPage = 0
@@ -13,7 +13,27 @@ for year in range(2010, 2025):
         # For every page in the pdf
         for page in pdf.pages:
 
-            # Extract pages of modality subject
+            # ? Possible optimització del for, una vegada ja tingas la primera pàgina on s'hi troben les asignatures de modalitat ja no cal fer més iterracions car si hi són dos pàgines amb es la següent, es a dir; una vegada tens la primera pàgina  solaments tens que mirar si la següent té la paraula UA
+
+            # Extraction of the table of obligatory subjects
+            if (
+                "Resultats globals per assignatura comuna" in extracted_text
+                and "Sistema Universitari Valencià" in extracted_text
+            ):
+
+                extracted_table_special = page.extract_table()
+                extracted_table_special.pop(0)
+
+                #! ACÍ ANIRIA DE LUXE UN COMENTARI ESPECÍFICANT AMB QUE COLUMNA CORRESPON CADA FILERA QUE AFEGIXES
+                for fila in extracted_table_special:
+                    fila.append(fila[2])  #
+                    fila.append(0)  #
+                    fila.append(0)  #
+                    # ? equivalent amb fila.extend([fila[2],0,0])
+                table.extend(extracted_table_special)
+                continue
+
+            # Get pages of modality subject
             extracted_text = page.extract_text()
             if (
                 "SUV" in extracted_text
@@ -37,19 +57,7 @@ for year in range(2010, 2025):
                 lastPage = page.page_number
                 continue
 
-            # Extraction of the table of obligatory subjects
-            if (
-                "Resultats globals per assignatura comuna" in extracted_text
-                and "Sistema Universitari Valencià" in extracted_text
-            ):
-                extracted_table_special = page.extract_table()
-                extracted_table_special.pop(0)
-                for fila in extracted_table_special:
-                    fila.append(fila[2])
-                    fila.append(0)
-                    fila.append(0)
-                table.extend(extracted_table_special)
-
+        #! Esto se podría mejorar
         # Extracts the table from the pages selected
         for extraction in range(firstPage, lastPage):
             page = pdf.pages[extraction - 1]
@@ -61,11 +69,15 @@ for year in range(2010, 2025):
 
             table.extend(extracted_table)
 
+    # TODO: Aquesta part de transformació la moverem a altre puesto per a profitar y fer la transformació de llista a tupla, per a facilitar la inserció a la base de dades
+
     # Converts all the numeric elements that where interpreted as strings to float (or int if has no decimals)
     for fila in table:
+
+        # ? Se
         # Adds a new column to the table with the number of people that passed the obligatory phase
         fila.append(int(fila[3]) - int(fila[9]))
-        
+
         for i in range(1, len(fila)):
             if isinstance(fila[i], str):
                 fila[i] = fila[i].replace(",", ".")
@@ -78,5 +90,5 @@ for year in range(2010, 2025):
         fila.append(year)
         fila.append(convo)
 
-    #final order of the rows: subject, ... (like in the pdf), pass_obligatory_phase, year, convo.    
-    
+    # final order of the rows: subject, ... (like in the pdf), pass_obligatory_phase, year, convo.
+    return table
