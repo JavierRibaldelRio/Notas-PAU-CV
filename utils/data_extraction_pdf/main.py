@@ -6,7 +6,7 @@ from database_utils.insert_into_database import insert_into_database
 
 def main():
     # Script that gets all the data from the pdf's and inserts them inside the database
-    years = range(2020, 2025)
+    years = range(2010, 2025)
 
     calls = {"ordinaria": 0, "extraordinaria": 1, "global": 2}
 

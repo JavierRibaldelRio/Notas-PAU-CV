@@ -2,8 +2,22 @@
 
 
 def transform_data(data, id_equiv, call_equiv, year, call):
+
+    # EXCEPTIONS
+    # ITALIA 2023 EXTRAORDINARIA NO PRESENTADOS Y 2 MATRICULADOS
+    if data[19][0] == "ITA" and year == 2023:
+        data.pop(19)
+
     # Converts all the numeric elements that where interpreted as strings to float (or int if has no decimals)
     for fila in data:
+        # Excepcions
+        # ALEMANY 2010 EXTRAORDINARIA FALTA LA MITJANA (UA)
+        if fila[5] == "***" and year == 2010:
+            fila[5] = 6.601
+
+        # ALEMANY 2012 EXTRAORDINARIA FALTA LA MITJANA (UMH)
+        elif fila[5] == "***" and year == 2012:
+            fila[5] = 9.002
 
         fila[0] = id_equiv[fila[0]]
 
