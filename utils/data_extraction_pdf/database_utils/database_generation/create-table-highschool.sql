@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS high_schools(
 
-    code INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
+    code TEXT NOT NULL,
     name TEXT NOT NULL,
     type_id INTEGER,
     cif TEXT,
