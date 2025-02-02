@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS high_schools(
 
     image BLOB,
 
-    FOREIGN KEY (type_id) REFERENCES high_school_types(id)
+    FOREIGN KEY (type_id) REFERENCES high_school_types(id),
     FOREIGN KEY (municipality_id) REFERENCES municipalities(id)
 
 )

@@ -1,7 +1,7 @@
 # The tables of "regions", "provinces" y "municipalities"tienen referencias entre sí, por lo que hay que crearlas con el siguiente script
 
 CREATE TABLE IF NOT EXISTS municipalities(
-    id INTERGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     ine_code TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL UNIQUE,
     region INTEGER,
