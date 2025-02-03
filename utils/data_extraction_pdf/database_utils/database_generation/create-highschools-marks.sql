@@ -1,4 +1,5 @@
 CREATE TABLE IF NOT EXISTS high_school_marks(
+    id INTEGER PRIMARY KEY,
     high_school_id INTEGER NOT NULL,
     year INTEGER NOT NULL,
     call INTEGER NOT NULL,
@@ -18,6 +19,5 @@ CREATE TABLE IF NOT EXISTS high_school_marks(
     diference_average_bach_pau REAL NOT NULL,
 
     FOREIGN KEY (high_school_id) REFERENCES high_schools(id)
-
 
 )
