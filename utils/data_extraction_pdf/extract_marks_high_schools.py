@@ -78,10 +78,3 @@ def marks_from_high_schools(convo, year):
                 table.append(i)      
 
     return table
-
-
-x = marks_from_high_schools("global", 2011)
-
-for i in x:
-    print(i)
-print(len(x))
