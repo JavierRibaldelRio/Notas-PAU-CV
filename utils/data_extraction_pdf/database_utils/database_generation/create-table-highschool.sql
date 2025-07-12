@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS high_schools(
     email TEXT,
     phone_number TEXT,
     fax TEXT,
+
+    website TEXT,
     
     owner TEXT,
 
