@@ -37,3 +37,11 @@ To simplify the dataset and enable consistent grouping at the **municipality lev
    These names were mistakenly split during the initial operation and were **manually corrected** to preserve their proper form.
 
 This cleaned version enables standardized analysis of school data by municipality.
+
+## Important Note on Center and Postal Codes
+
+Please note that **center codes** and **postal codes** from the province of **Alicante** begin with `03`.  
+It is essential to preserve the **leading zero** in both cases when reading, manipulating, or exporting this data.  
+If processed as integers (e.g. in Excel, LibreOffice, or Python without proper formatting), these codes may be truncated to `3XXXX` or `3XXX`, leading to incorrect matches or failed database operations.
+
+To avoid this, ensure these fields are always handled as **strings**, and use padding (e.g. `.zfill(5)` in Python) if needed.
