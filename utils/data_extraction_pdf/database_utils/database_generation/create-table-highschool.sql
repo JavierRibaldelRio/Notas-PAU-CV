@@ -7,9 +7,8 @@ CREATE TABLE IF NOT EXISTS high_schools(
     cif TEXT,
     
     address TEXT,
-    postal_code INTEGER,
+    postal_code TEXT,
     municipality_id INTEGER NOT NULL,
-    locality TEXT,
 
     latitude REAL,
     longitude REAL,
