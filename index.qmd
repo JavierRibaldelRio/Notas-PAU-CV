@@ -1,0 +1,22 @@
+---
+title: "Normal"
+---
+
+This is a Quarto website.
+
+To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
+
+
+
+```{r}
+library(tidyverse)
+
+di <- diamonds
+
+di |> ggplot(aes(x = carat, y = price)) + geom_point()
+```
+
+sdfas
+
+sf
+sdfsf
