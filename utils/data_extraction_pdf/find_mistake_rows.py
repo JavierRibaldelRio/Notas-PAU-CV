@@ -10,7 +10,8 @@ def find_mistaken_rows(table):
     
     filtered_rows = []
 
-    with open("../../data/high_school_extraction_errors.txt", "a") as file:
+    #! REMEMBER TO GO BACK TO THE ORIGINAL FILE NOT _test
+    with open("../../data/high_school_extraction_errors_test.txt", "a") as file:
         for row in table:
             count = 0
             for i in row:
