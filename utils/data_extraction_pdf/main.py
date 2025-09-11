@@ -3,7 +3,7 @@ from database_utils.get_ids_of_subjects import get_ids_of_subjects
 from database_utils.transformation_of_data import transform_data
 from database_utils.insert_into_database import insert_into_database
 
-
+# Extracts marks of each subject of each year.
 def main():
     # Script that gets all the data from the pdf's and inserts them inside the database
     years = range(2010, 2025)
