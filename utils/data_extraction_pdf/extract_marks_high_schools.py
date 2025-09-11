@@ -6,7 +6,7 @@ import pandas as pd
 from find_mistake_rows import find_mistaken_rows
 
 # Returns the first and the last page uses pdf plummers
-def get_pages_high_schools( convo, year):
+def get_pages_high_schools(convo, year):
 
     # Stores the first and the last page
     firstPage = 0
@@ -45,7 +45,10 @@ def get_data_from_pdf(firstPage, lastPage, convo, year):
     
     return table
     
-def format_table_first(table, convo, year):
+
+# FORMATEA LA DATA HASTA 2015 ------------------------------------------------------------------------------------
+
+def format_table_2010(table, convo, year):
     for i in table:
         i.pop(0)
 
@@ -86,64 +89,10 @@ def format_table_first(table, convo, year):
 
     return table
 
-# Prueva de metodo alternativo para corregir los errores de recolecta a partir de 2015
-def format_table_second(table, convo, year):
-    for i in table:
-        if type(i[0]) == str:
-            correction = i[0][:8]
-            try:
-                try_int = int(correction)
-                i[1] = correction
-            except ValueError:
-                i.pop(0)
 
-        # Correction of cell types
-        if type(i[0]) == float and not pd.isna(i[0]):
-            aux = str(int(i[0]))
-            if len(aux) < 8:
-                dif = 8 - len(aux)
-                aux = '0' * dif + aux
-            i[0] = aux
-        elif type(i[0]) == str and not pd.isna(i[0]):
-            aux_one = i[0][:8]
-            aux_two = i[0][8:]
-            try:
-                aux = int(aux_one)
-                i[0] = aux_one
-            except ValueError:
-                try:
-                    aux = int(aux_two)
-                    i[0] = aux_two
-                except ValueError:
-                    pass
-            
+# FORMATEO DATA DESDE 2015 HASTA 2018 (NO INCLUIDO) --------------------------------------------------------------
 
-        # We don't need the city of the school
-        i.pop(1)
-
-        # The colummn of the enrolled and the candidates is fusioned so we put the candidates at the end of the row
-        if type(i[1]) == str:
-            aux = i[1].split(' ')
-            i[1] = int(aux[0])
-            i.append(int(aux[1]))
-        
-            # The column of the pass is a float, we want a integrer
-            i[2] = int(i[2])
-
-            # The next columns have a comma and are string, we want floats
-            for j in range(3, 9):
-                if i[j] == '***':
-                    i[j] = float('nan')
-                    continue
-                i[j] = i[j].replace(' ', '')
-                i[j] = float(i[j].replace(',', '.'))
-
-        i.append(convo)
-        i.append(year)
-
-    return table
-
-
+# Recoge los codigos de centro y repara las primeras dos columnas.
 def format_center_code(row):
     if type(row[0]) == str:
         correction = str(row[0][-8:])
@@ -166,6 +115,7 @@ def format_center_code(row):
     # We don't need the city of the school
     row.pop(1)
 
+# Comprueba el tipo de cada fila y pone los correctos
 def type_check(row):
     if isinstance(row[1], str):
         nums = row[1].split()
@@ -205,18 +155,23 @@ def type_check(row):
         except (ValueError, IndexError):
             pass  # Handle the case where the conversion fails
 
+# Cambia el formato de los números en formato string, para que se puedan transformar en float
 def string_to_float(row):
     for i in range(4, 10):
         if row[i] == '***':
             row[i] = float('nan')
             continue
         
-        row[i] = row[i].replace(' ', '')
-        row[i] = row[i].replace(',', '.')
-        row[i] = float(row[i])
+        if type(row[i]) == str:
+            row[i] = row[i].replace(' ', '')
+            row[i] = row[i].replace(',', '.')
+            try:
+                row[i] = float(row[i])
+            except ValueError:
+                continue
         
-
-def test_format_table_second(table, convo, year):
+# Formateo completo
+def format_table_2015(table, convo, year):
     # Use filter to remove rows with NaN in the first column
     table = [row for row in table if not pd.isna(row[0])]
     for row in table:
@@ -236,7 +191,93 @@ def test_format_table_second(table, convo, year):
     return table
 
 
+# DOS PRIMERAS CONVOCATORIAS 2018 -----------------------------------------------
 
+def format_center_code_for2018(row):
+    if type(row[0]) == str:
+        correction = str(row[0][-8:])
+        try:
+            try_int = int(correction)
+            row[0] = str(correction)
+        except ValueError:
+            correction_list = row[0].split()
+            found = False
+            aux = 0
+            for element in correction_list:
+                if len(element) == 8:
+                    try:
+                        aux = int(element[:8])
+                        found = True
+                    except ValueError:
+                        continue
+
+            if not found:
+                row.pop(0)
+            else:
+                row[0] = str(aux)
+    
+    if type(row[0]) == float and not pd.isna(row[0]):
+        aux = str(int(row[0]))
+        if len(aux) < 8:
+            dif = 8 - len(aux)
+            aux = '0' * dif + aux
+        row[0] = aux
+    elif type(row[0]) == str and not pd.isna(row[0]):
+        aux = row[0][:8]
+        row[1] = row[0][8:]
+        row[0] = aux
+
+    if row[0] == "498":
+        row.pop(0)
+    # We don't need the city of the school
+
+# Format table just the first to of the convos of 2018
+def format_table_2018(table, convo, year):
+    for row in table:
+        format_center_code_for2018(row)
+        row.pop(1)
+
+        if type(row[1]) == str:
+            aux = row[1].split()
+            count = 0
+            for element in aux:
+                try:
+                    int(element)
+                    count += 1
+                except ValueError:
+                    continue
+            if (count != len(aux)):
+                row.pop(1)
+        elif pd.isna(row[1]):
+            row.pop(1)
+
+        # Última comprobación de que todos los códigos tienen 8 cifras (especial atencion en los códigos de Alicante)
+        if type(row[0]) == str and len(row[0]) < 8 and not len(row[0]) == 0:
+            diff = 8 - len(row[0])
+            row[0] = '0' * diff + row[0]
+
+        # Fuerza bruta, no hay manera
+        if convo == "ordinaria" and year == 2018 and row[7] == "6,863" and row[8] == "1,077" and row[9] == "1,157":
+            row[0] = "46015721"
+        
+        type_check(row)
+        #string_to_float(row)
+
+        for i in range(1, 4):
+            row[i] = int(row[i])
+        
+
+    # Comprobación final de los datos
+    #table = [row for row in table if row[1] > 2]
+
+    return table
+
+
+
+
+
+
+# FORMATEO DE LA DATA DEPENDIENDO DEL AÑO ----------------------------------------------------------------
 
 def marks_from_high_schools(convo, year):
     table = []  
@@ -248,17 +289,26 @@ def marks_from_high_schools(convo, year):
     
     # Formats the data into the right format to be put inside sqlite
     if year < 2015:
-        table = format_table_first(pdf_data, convo, year)
-    else:
-        # table = format_table_second(pdf_data, convo, year)
-        table = test_format_table_second(pdf_data, convo, year)
+        table = format_table_2010(pdf_data, convo, year)
+    
+    elif year < 2018:
+        
+        table = format_table_2015(pdf_data, convo, year)
         #table = pdf_data
-
+   
+    elif year == 2018 and (convo == "ordinaria" or convo == "extraordinaria"):
+        table = format_table_2018(pdf_data, convo, year)
+    
+    else: 
+        table = pdf_data
     #table = find_mistaken_rows(table)
 
     return table
 
-years = range(2017, 2025)
+
+# TESTS --------------------------------------------------------------------------
+
+years = range(2018, 2025)
 
 calls = {"ordinaria": 0, "extraordinaria": 1, "global": 2}
 
@@ -270,16 +320,17 @@ calls = {"ordinaria": 0, "extraordinaria": 1, "global": 2}
 #         print("    X", end="", flush=True)
 #     print("   |")
 
-for year in years:
-    for call in calls.keys():
-        print(year, call,"\n" + ("-")* 20)
+# for year in years:
+#     for call in calls.keys():
+#         print(year, call,"\n" + ("-")* 20)
 
-        x = marks_from_high_schools(call, year)
-        count = 0
-        for i in x:
-            count += 1
-            print(i)
-        print(count)
+#         x = marks_from_high_schools(call, year)
+#         count = 0
+#         for i in x:
+#             count += 1
+#             print(i)
+#         print(count)
 
-# TODO repasar rango 2015, fin (no va bé) revisar format_table()
-# TODO repasar rango 2015, fin (no va bé) revisar format_table()
+x = marks_from_high_schools("global", 2018)
+for i in x:
+    print(i)
