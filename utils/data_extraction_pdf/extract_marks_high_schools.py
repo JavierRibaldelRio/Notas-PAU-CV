@@ -2,6 +2,7 @@
 import tabula
 import pdfplumber
 import pandas as pd
+import math
 
 from find_mistake_rows import find_mistaken_rows
 
@@ -41,7 +42,7 @@ def get_data_from_pdf(firstPage, lastPage, convo, year):
         table_page = tabula.read_pdf(path, pages = extraction, stream = True, silent=True)
         
         # Adds the data
-        table.extend([row for row in table_page[0].values.tolist() if not pd.isna(row[4])])
+        table.extend([row for row in table_page[0].values.tolist() if not pd.isna(row[4]) ])
     
     return table
     
@@ -157,7 +158,7 @@ def type_check(row):
 
 # Cambia el formato de los números en formato string, para que se puedan transformar en float
 def string_to_float(row):
-    for i in range(4, 10):
+    for i in range(4, len(row)):
         if row[i] == '***':
             row[i] = float('nan')
             continue
@@ -187,11 +188,14 @@ def format_table_2015(table, convo, year):
         # The nexts columns are all floats
         string_to_float(row)
 
+        # Add the convo and the year
+        row.append(convo)
+        row.append(year)
 
     return table
 
 
-# DOS PRIMERAS CONVOCATORIAS 2018 -----------------------------------------------
+# CONVOCATORIAS 2018 -----------------------------------------------
 
 def format_center_code_for2018(row):
     if type(row[0]) == str:
@@ -230,50 +234,57 @@ def format_center_code_for2018(row):
     if row[0] == "498":
         row.pop(0)
     # We don't need the city of the school
-
-# Format table just the first to of the convos of 2018
-def format_table_2018(table, convo, year):
-    for row in table:
-        format_center_code_for2018(row)
+    
+    row.pop(1)
+    if type(row[1]) == str:
+        aux = row[1].split()
+        count = 0
+        for element in aux:
+            try:
+                int(element)
+                count += 1
+            except ValueError:
+                continue
+        if (count != len(aux)):
+            row.pop(1)
+    elif pd.isna(row[1]):
         row.pop(1)
 
-        if type(row[1]) == str:
-            aux = row[1].split()
-            count = 0
-            for element in aux:
-                try:
-                    int(element)
-                    count += 1
-                except ValueError:
-                    continue
-            if (count != len(aux)):
-                row.pop(1)
-        elif pd.isna(row[1]):
-            row.pop(1)
+    # Última comprobación de que todos los códigos tienen 8 cifras (especial atencion en los códigos de Alicante)
+    if type(row[0]) == str and len(row[0]) < 8 and not len(row[0]) == 0:
+        diff = 8 - len(row[0])
+        row[0] = '0' * diff + row[0]
 
-        # Última comprobación de que todos los códigos tienen 8 cifras (especial atencion en los códigos de Alicante)
-        if type(row[0]) == str and len(row[0]) < 8 and not len(row[0]) == 0:
-            diff = 8 - len(row[0])
-            row[0] = '0' * diff + row[0]
+# Format table just 2018
+def format_table_2018(table, convo, year):
+    
+    # Necesario porque aparece porque si la cabecera de la tabla
+    table = [row for row in table if not any(palabra in map(str, row) for palabra in ['Expedient', 'Presentats'])]
+
+    for row in table:
+        format_center_code_for2018(row)
 
         # Fuerza bruta, no hay manera
         if convo == "ordinaria" and year == 2018 and row[7] == "6,863" and row[8] == "1,077" and row[9] == "1,157":
             row[0] = "46015721"
         
         type_check(row)
-        #string_to_float(row)
+        string_to_float(row)
 
         for i in range(1, 4):
             row[i] = int(row[i])
-        
+
+        # Add convo and year
+        row.append(convo)
+        row.append(year)
+          
 
     # Comprobación final de los datos
     #table = [row for row in table if row[1] > 2]
 
     return table
 
-
-
+# A PARTIR DE 2019 ---------------------------------------------------------------------------
 
 
 
@@ -296,11 +307,12 @@ def marks_from_high_schools(convo, year):
         table = format_table_2015(pdf_data, convo, year)
         #table = pdf_data
    
-    elif year == 2018 and (convo == "ordinaria" or convo == "extraordinaria"):
+    elif year == 2018:
         table = format_table_2018(pdf_data, convo, year)
     
+    # A partir de 2019 cambia el formato del pdf
     else: 
-        table = pdf_data
+        table = format_table_2018(pdf_data, convo, year)
     #table = find_mistaken_rows(table)
 
     return table
@@ -308,7 +320,7 @@ def marks_from_high_schools(convo, year):
 
 # TESTS --------------------------------------------------------------------------
 
-years = range(2018, 2025)
+years = range(2019, 2025)
 
 calls = {"ordinaria": 0, "extraordinaria": 1, "global": 2}
 
@@ -320,17 +332,17 @@ calls = {"ordinaria": 0, "extraordinaria": 1, "global": 2}
 #         print("    X", end="", flush=True)
 #     print("   |")
 
-# for year in years:
-#     for call in calls.keys():
-#         print(year, call,"\n" + ("-")* 20)
+for year in years:
+    for call in calls.keys():
+        print(year, call,"\n" + ("-")* 20)
 
-#         x = marks_from_high_schools(call, year)
-#         count = 0
-#         for i in x:
-#             count += 1
-#             print(i)
-#         print(count)
+        x = marks_from_high_schools(call, year)
+        count = 0
+        for i in x:
+            count += 1
+            print(i)
+        print(count)
 
-x = marks_from_high_schools("global", 2018)
-for i in x:
-    print(i)
+# x = marks_from_high_schools("global", 2018)
+# for i in x:
+#     print(i)
