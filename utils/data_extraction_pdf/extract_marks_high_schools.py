@@ -286,7 +286,27 @@ def format_table_2018(table, convo, year):
 
 # A PARTIR DE 2019 ---------------------------------------------------------------------------
 
+def format_table_2019(table, convo, year):
 
+    # Necesario porque aparece porque si la cabecera de la tabla
+    table = [row for row in table if not any(palabra in map(str, row) for palabra in ['Aptes', '% Aptes', 'Mitjana'])]
+
+    for row in table:
+        row.pop(0)
+        row.pop(1)
+
+        if pd.isna(row[1]):
+            row.pop(1)
+
+        for i in range(1, 4):
+            row[i] = int(row[i])
+
+        string_to_float(row)
+
+        row.append(convo)
+        row.append(year)
+
+    return table
 
 # FORMATEO DE LA DATA DEPENDIENDO DEL AÑO ----------------------------------------------------------------
 
@@ -312,7 +332,7 @@ def marks_from_high_schools(convo, year):
     
     # A partir de 2019 cambia el formato del pdf
     else: 
-        table = format_table_2018(pdf_data, convo, year)
+        table = format_table_2019(pdf_data, convo, year)
     #table = find_mistaken_rows(table)
 
     return table
