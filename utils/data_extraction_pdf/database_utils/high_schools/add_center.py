@@ -131,6 +131,14 @@ def get_id_municipalities(municipality):
 
     municipality = municipality.lower().strip()
 
+    match municipality:
+        case "náquera":
+            municipality = "nàquera"
+        case "xilxes":
+            municipality = "chilches"
+        case "montcada":
+            municipality = "monacada"
+
     separator = ", "
 
     # Looks for an article introducing the name of a vilagge
