@@ -22,6 +22,5 @@ with open(
             (codigo, subject, otros_codigos),
         )
 
-
 conn.commit()
 conn.close()

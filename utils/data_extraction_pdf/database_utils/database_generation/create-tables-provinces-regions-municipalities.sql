@@ -4,18 +4,19 @@ CREATE TABLE IF NOT EXISTS municipalities(
     id INTEGER PRIMARY KEY,
     ine_code TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL UNIQUE,
+    other_names TEXT,
     region INTEGER,
+    province INTEGER,
 
-    FOREIGN KEY(region) REFERENCES regions(id)
+    FOREIGN KEY(region) REFERENCES regions(id),
+    FOREIGN KEY(province) REFERENCES provinces(id)
 );
 
 CREATE TABLE IF NOT EXISTS regions(
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
-    region_head INTEGER,
     province INTEGER,
 
-    FOREIGN KEY (region_head) REFERENCES municipalities(id),
     FOREIGN KEY (province) REFERENCES provinces(id)
 
 );
