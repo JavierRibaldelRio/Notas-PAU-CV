@@ -1,29 +1,40 @@
 # Gets the raw data and transforms it converting the string into ints an decimals, and returns an array of tuples
 
-
 def transform_data(data, id_equiv, call_equiv, year, call):
+    """
+    Transforms raw grade data:
+    - Handles special cases and missing values.
+    - Converts string numbers to int/float.
+    - Adds calculated columns (passed obligatory, year, call).
+    - Returns immutable tuple of tuples.
+    Args:
+        data: List of lists with raw data.
+        id_equiv: Dict mapping subject codes to IDs.
+        call_equiv: Dict mapping call names to IDs.
+        year: Year of the data.
+        call: Call name.
+    """
 
-    # EXCEPTIONS
-    # ITALIA 2023 EXTRAORDINARIA NO PRESENTADOS Y 2 MATRICULADOS
+    # Exception: Remove ITALIAN 2023 extraordinary row with no grades
     if data[19][0] == "ITA" and year == 2023:
         data.pop(19)
 
-    # Converts all the numeric elements that where interpreted as strings to float (or int if has no decimals)
+    # Iterate over each row and transform values
     for fila in data:
-        # Excepcions
-        # ALEMANY 2010 EXTRAORDINARIA FALTA LA MITJANA (UA)
+        # Exception: German 2010 extraordinary missing average (UA)
         if fila[5] == "***" and year == 2010:
             fila[5] = 6.601
-
-        # ALEMANY 2012 EXTRAORDINARIA FALTA LA MITJANA (UMH)
+        # Exception: German 2012 extraordinary missing average (UMH)
         elif fila[5] == "***" and year == 2012:
             fila[5] = 9.002
 
+        # Map subject code to ID
         fila[0] = id_equiv[fila[0]]
 
-        # Adds a new column to the table with the number of people that passed the obligatory phase
+        # Add column: number of people who passed obligatory phase
         fila.append(int(fila[3]) - int(fila[9]))
 
+        # Convert string numbers to float or int
         for i in range(1, len(fila) - 1):
             if isinstance(fila[i], str):
                 fila[i] = fila[i].replace(",", ".")
@@ -32,9 +43,9 @@ def transform_data(data, id_equiv, call_equiv, year, call):
                 else:
                     fila[i] = int(fila[i])
 
-        # Adds two more columns to the table, with the year of the convocatory, and which convocatori
+        # Add year and call columns
         fila.append(year)
         fila.append(call_equiv[call])
 
-    # Return a tuple of tuples, that can't be changed
+    # Return immutable tuple of tuples
     return tuple(tuple(row) for row in data)

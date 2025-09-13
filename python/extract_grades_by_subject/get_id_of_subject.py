@@ -1,7 +1,7 @@
 import sqlite3
 
 
-def get_ids_of_subjects():
+def get_id_of_subject():
 
     # Output dict with the equivalences
     output = {}
