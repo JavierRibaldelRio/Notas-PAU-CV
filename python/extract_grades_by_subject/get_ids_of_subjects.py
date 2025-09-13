@@ -7,7 +7,7 @@ def get_ids_of_subjects():
     output = {}
 
     # Connection
-    conn = sqlite3.connect("../../data/notas-pau.db")
+    conn = sqlite3.connect("../data/notas-pau.db")
     cur = conn.cursor()
 
     # Get all subjects
