@@ -65,4 +65,7 @@ The `high_school_marks` table expects the following columns:
   export PATH=$JAVA_HOME/bin:$PATH
   ```
 
+## Auxiliary Functions
+- The script `add_center_results.py` provides the function `add_center_results_by_code`, which allows you to add all the results for a specific high school center (by code) over a range of years. This is useful for extracting and storing results for one center only, instead of processing all centers.
+
 
