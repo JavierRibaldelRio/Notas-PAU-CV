@@ -2,18 +2,15 @@
 import tabula
 import pdfplumber
 import pandas as pd
-import math
-
-from find_mistake_rows import find_mistaken_rows
 
 # Returns the first and the last page uses pdf plummers
-def get_pages_high_schools(convo, year):
+def get_pages_high_schools(path):
 
     # Stores the first and the last page
     firstPage = 0
     lastPage = 0
     # Open PDF
-    with pdfplumber.open(f"data/convocatorias/{convo}/{year}-{convo}.pdf") as pdf:
+    with pdfplumber.open(path) as pdf:
 
         # For every page in the pdf
         for page in pdf.pages:
@@ -31,11 +28,10 @@ def get_pages_high_schools(convo, year):
                 lastPage = pdf.pages[len(pdf.pages)-1].page_number
                 return firstPage, lastPage
 
-def get_data_from_pdf(firstPage, lastPage, convo, year):
+def get_data_from_pdf(firstPage, lastPage, path):
     table =  []
     
     # Stores the path
-    path = f"data/convocatorias/{convo}/{year}-{convo}.pdf"
 
     # Extracts the table from the pages selected
     for extraction in range(firstPage, lastPage + 1):
@@ -313,11 +309,14 @@ def format_table_2019(table, convo, year):
 def marks_from_high_schools(convo, year):
     table = []  
 
-    first, last = get_pages_high_schools(convo, year)
+    path = f"../data/convocatorias/{convo}/{year}-{convo}.pdf"
+
+
+    first, last = get_pages_high_schools(path)
 
     # Extracts the data form the pages
-    pdf_data = get_data_from_pdf(first, last, convo, year)
-    
+    pdf_data = get_data_from_pdf(first, last, path)
+
     # Formats the data into the right format to be put inside sqlite
     if year < 2015:
         table = format_table_2010(pdf_data, convo, year)
@@ -338,31 +337,31 @@ def marks_from_high_schools(convo, year):
     return table
 
 
-# TESTS --------------------------------------------------------------------------
+# # TESTS --------------------------------------------------------------------------
 
-years = range(2019, 2025)
+# years = range(2019, 2025)
 
-calls = {"ordinaria": 0, "extraordinaria": 1, "global": 2}
+# calls = {"ordinaria": 0, "extraordinaria": 1, "global": 2}
 
-# print("|-------- 0 -- 1 -- 2 --|")
+# # print("|-------- 0 -- 1 -- 2 --|")
+# # for year in years:
+# #     print("|" + str(year) + ":", end="", flush=True)
+# #     for call in calls.keys():
+# #         marks_from_high_schools(call, year)
+# #         print("    X", end="", flush=True)
+# #     print("   |")
+
 # for year in years:
-#     print("|" + str(year) + ":", end="", flush=True)
 #     for call in calls.keys():
-#         marks_from_high_schools(call, year)
-#         print("    X", end="", flush=True)
-#     print("   |")
+#         print(year, call,"\n" + ("-")* 20)
 
-for year in years:
-    for call in calls.keys():
-        print(year, call,"\n" + ("-")* 20)
+#         x = marks_from_high_schools(call, year)
+#         count = 0
+#         for i in x:
+#             count += 1
+#             print(i)
+#         print(count)
 
-        x = marks_from_high_schools(call, year)
-        count = 0
-        for i in x:
-            count += 1
-            print(i)
-        print(count)
-
-# x = marks_from_high_schools("global", 2018)
-# for i in x:
-#     print(i)
+# # x = marks_from_high_schools("global", 2018)
+# # for i in x:
+# #     print(i)
