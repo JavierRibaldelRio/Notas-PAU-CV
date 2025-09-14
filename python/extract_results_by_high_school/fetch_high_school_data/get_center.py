@@ -7,7 +7,7 @@ import subprocess
 def get_center_id(code):
 
     # Connect to the data base
-    conn = sqlite3.connect("data/notas-pau.db")
+    conn = sqlite3.connect("../data/notas-pau.db")
     cur = conn.cursor()
 
     # Checks if the center is already added
@@ -22,7 +22,7 @@ def get_center_id(code):
         result = subprocess.run(
             [
                 "python3",
-                "utils/data_extraction_pdf/database_utils/high_schools/add_center.py",
+                "extract_results_by_high_school/fetch_high_school_data/add_center.py",
                 code,
             ],
             capture_output=True,

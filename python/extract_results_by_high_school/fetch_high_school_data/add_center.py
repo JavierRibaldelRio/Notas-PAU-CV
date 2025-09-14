@@ -11,7 +11,7 @@ from playwright.sync_api import sync_playwright
 
 
 # Connect to the data base
-conn = sqlite3.connect("data/notas-pau.db")
+conn = sqlite3.connect("../data/notas-pau.db")
 cur = conn.cursor()
 
 POSTAL_CODE_LENGTH = 5
@@ -116,7 +116,7 @@ def add_center(code):
 # Auxiliar functions
 def get_center_data_from_csv(code):
     with open(
-        "data/centros/centros_educativos_cv-only-municipality.csv",
+        "../data/centros/centros_educativos_cv-only-municipality.csv",
         newline="",
         encoding="utf-8",
     ) as f:
@@ -153,6 +153,11 @@ def get_id_municipalities(municipality):
 
             if municipality[2] == " ":
                 municipality = municipality[3:] + separator + two_ch_substring
+
+
+    # los montesinos les useras  els poblets...
+    if municipality.startswith("los") | municipality.startswith("les") | municipality.startswith("els") and municipality[3] == " ":
+        municipality = municipality[4:] + separator + municipality[:3]
 
     ans = cur.execute(
         "SELECT id FROM  municipalities WHERE other_names LIKE  ? OR  other_names = ?",
@@ -219,4 +224,8 @@ def add_image(center_id):
 
 if __name__ == "__main__":
     code = sys.argv[1]
-    print(add_center(code))
+    try:
+        print(add_center(code))
+    except UnboundLocalError as e:
+        print("Error adding center:", code)
+        sys.exit(1)   # return a non-zero code on error
