@@ -31,29 +31,6 @@ CREATE TABLE provinces(
 
     FOREIGN KEY (provincial_capital) REFERENCES municipalities(id)
 );
-CREATE TABLE high_school_marks(
-    id INTEGER PRIMARY KEY,
-    high_school_id INTEGER NOT NULL,
-    year INTEGER NOT NULL,
-    call INTEGER NOT NULL,
-
-    enrolled_total INTEGER NOT NULL,
-    candidates INTEGER NOT NULL,
-    pass INTEGER NOT NULL,
-    pass_percentatge REAL NOT NULL,
-
-    average_bach REAL NOT NULL,
-    standard_dev_bach REAL NOT NULL,
-
-
-    average_compulsory_pau REAL NOT NULL,
-    standard_dev_pau REAL NOT NULL,
-
-    diference_average_bach_pau REAL NOT NULL,
-
-    FOREIGN KEY (high_school_id) REFERENCES high_schools(id)
-
-);
 CREATE TABLE municipalities(
     id INTEGER PRIMARY KEY,
     ine_code TEXT NOT NULL UNIQUE,
@@ -101,5 +78,27 @@ CREATE TABLE high_schools(
 
     FOREIGN KEY (type_id) REFERENCES high_school_types(id),
     FOREIGN KEY (municipality_id) REFERENCES municipalities(id)
+
+);
+CREATE TABLE high_school_marks(
+    id INTEGER PRIMARY KEY,
+    high_school_id INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+    call INTEGER NOT NULL,
+
+    enrolled_total INTEGER,
+    candidates INTEGER,
+    pass INTEGER,
+    pass_percentatge REAL,
+    average_bach REAL,
+    standard_dev_bach REAL,
+
+
+    average_compulsory_pau REAL,
+    standard_dev_pau REAL,
+
+    diference_average_bach_pau REAL,
+
+    FOREIGN KEY (high_school_id) REFERENCES high_schools(id)
 
 );
