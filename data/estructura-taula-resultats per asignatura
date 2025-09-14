@@ -1,5 +1,0 @@
-
-subject, year, call, enrolled_total, candidates,pass, pass_percentatge, average, standard_dev, candidates_compulsory, pass_compulsory, candidates_optional, pass_optional
-
-array pau; subject, enrolled_total, candidates,pass, pass_percentatge, average, standard_dev, candidates_compulsory, pass_compulsory, candidates_optional, pass_optional, year, call
-
