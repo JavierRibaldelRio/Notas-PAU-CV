@@ -1,6 +1,9 @@
 library(shiny)
 library(bslib)
 
+source("R/ui/subjects.R")
+
+
 ui <- page_navbar(
   title = "Análisis Notas PAU",
   id = "page",
@@ -13,7 +16,10 @@ ui <- page_navbar(
   ),
 
   # Page 1
-  nav_panel("Asignaturas", "Page A content"),
+  nav_panel(
+    "Asignaturas",
+    subjects()
+  ),
 
   nav_menu(
     "Regiones",
