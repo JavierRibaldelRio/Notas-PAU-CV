@@ -1,6 +1,6 @@
 library(shiny)
 library(bslib)
-library(DBI)
+library(DBI) # also install rsqlite
 library(pool)
 
 source("R/ui/subjects.R")
@@ -54,17 +54,19 @@ ui <- page_navbar(
 
   nav_panel("Sobre nosotros", "Pau y Javier"),
 
+  # Dark mode selector
   nav_item(input_dark_mode(id = "mode")),
 )
 
 server <- function(input, output, session) {
+  # Conection to the database
   pool <- dbPool(
     drv = RSQLite::SQLite(),
     dbname = DB_PATH,
     flags = RSQLite::SQLITE_RO
   )
 
-  # Ajustes recomendados para concurrencia/rendimiento
+  # Settings of sqlite
   try(dbExecute(pool, "PRAGMA journal_mode = WAL;"), silent = TRUE)
   try(dbExecute(pool, "PRAGMA busy_timeout = 5000;"), silent = TRUE)
   try(dbExecute(pool, "PRAGMA synchronous = NORMAL;"), silent = TRUE)
@@ -72,6 +74,7 @@ server <- function(input, output, session) {
 
   onStop(function() poolClose(pool))
 
+  # get options of selectize
   observe({
     df <- dbGetQuery(pool, "SELECT id, name FROM subjects")
     print(df)

@@ -12,6 +12,7 @@ subjects <- function() {
   )
 }
 
+# Content of the sidebar, main configurations
 sidebar_content <- function() {
   tagList(
     # Stat selector
@@ -33,12 +34,11 @@ sidebar_content <- function() {
       list("Ordinaria" = 0, "Extraordinaria" = 1, "Global" = 2)
     ),
 
+    # Graph selector
     input_switch(
       "visualization-mode",
       "Mostrar como gráfico de barras"
     ),
-
-
 
     # Years selector
     sliderInput(
@@ -49,17 +49,17 @@ sidebar_content <- function() {
       value = c(2010, last_year),
       sep = "",
     ),
-    
+
     # Arima prediction
     checkboxInput("predict", "Predicción", FALSE),
   )
 }
 
 main_panel_content <- function() {
-  selectizeInput( 
-    "select-subject", 
-    "Asignaturas", 
-    list(), 
+  selectizeInput(
+    "select-subject",
+    "Asignaturas",
+    list(),
     multiple = TRUE,
     width = "100%"
   )
