@@ -1,11 +1,13 @@
 library(shiny)
 library(bslib)
 
+last_year <- 2024
+
 subjects <- function() {
   card(
     layout_sidebar(
-      sidebar_content(),
-      "adsfas"
+      sidebar = sidebar_content(),
+      main_panel_content()
     )
   )
 }
@@ -17,19 +19,48 @@ sidebar_content <- function() {
       inputId = "radio",
       label = "Variable",
       choices = list(
-        "Aprobados" = 1,
-        "Desviación Típica" = 4,
-        "Presentados" = 2,
-        "Media" = 3
+        "Presentados" = "candidates",
+        "Aprobados" = "pass",
+        "Media" = "average",
+        "Desviación Típica" = "standard_dev"
       )
     ),
+
+    # Call selector
+    selectInput(
+      "select-call",
+      "Convocatoria",
+      list("Ordinaria" = 0, "Extraordinaria" = 1, "Global" = 2)
+    ),
+
+    input_switch(
+      "visualization-mode",
+      "Mostrar como gráfico de barras"
+    ),
+
+
+
     # Years selector
     sliderInput(
       "years",
       "Años seleccionados",
       min = 2010,
-      max = 2024,
-      value = c(2010, 2024)
-    )
+      max = last_year,
+      value = c(2010, last_year),
+      sep = "",
+    ),
+    
+    # Arima prediction
+    checkboxInput("predict", "Predicción", FALSE),
+  )
+}
+
+main_panel_content <- function() {
+  selectizeInput( 
+    "select-subject", 
+    "Asignaturas", 
+    list(), 
+    multiple = TRUE,
+    width = "100%"
   )
 }
