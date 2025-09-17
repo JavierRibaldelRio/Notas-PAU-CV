@@ -25,6 +25,7 @@ sidebar_content <- function() {
       choices = list(
         "Presentados" = "candidates",
         "Aprobados" = "pass",
+        "Aprobados (%)" = "pass_percentatge",
         "Media" = "average",
         "Desviación Típica" = "standard_dev"
       )
@@ -37,11 +38,11 @@ sidebar_content <- function() {
       list("Ordinaria" = 0, "Extraordinaria" = 1, "Global" = 2)
     ),
 
-    # Graph selector
-    # input_switch(
-    #   "visualization_mode",
-    #   "Mostrar como gráfico de barras"
-    # ),
+    #Graph selector
+    input_switch(
+      "visualization_mode",
+      "Mostrar como gráfico de barras"
+    ),
 
     # Years selector
     sliderInput(

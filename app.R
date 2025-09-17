@@ -62,20 +62,32 @@ server <- function(input, output, session) {
       sqlQuery
     )
 
-    print(df)
+    plot <- ggplot(
+      df,
+      aes(x = year, y = !!sym(varname))
+    )
 
-    df |>
-      ggplot(aes(x = year, y = !!sym(varname), color = code)) +
-      geom_point() +
-      geom_line(size = 2) +
-      scale_x_continuous(
-        breaks = seq(
-          min(df$year, na.rm = TRUE),
-          max(df$year, na.rm = TRUE),
-          by = 2
+    if (input$visualization_mode) {
+      plot <- plot +
+        geom_col(position = "dodge", aes(fill = code))
+    } else {
+      plot <- plot +
+        geom_point(aes(color = code)) +
+        geom_line(size = 2, aes(color = code)) +
+        scale_x_continuous(
+          breaks = seq(
+            min(df$year, na.rm = TRUE),
+            max(df$year, na.rm = TRUE),
+            by = 2
+          )
         )
+    }
+
+    plot <- plot +
+      guides(
+        color = guide_legend(title = "Asignaturas"),
+        fill = guide_legend(title = "Asignaturas")
       ) +
-      guides(color = guide_legend(title = "Asignaturas")) +
       labs(x = "Año", y = NULL, legend = NULL) +
       theme_minimal() +
       theme(
@@ -87,6 +99,8 @@ server <- function(input, output, session) {
         plot.background = element_rect(fill = "white", color = NA),
         panel.background = element_rect(fill = "white", color = NA),
       )
+
+    plot
   })
 }
 
