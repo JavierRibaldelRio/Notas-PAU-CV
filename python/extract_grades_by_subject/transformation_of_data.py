@@ -14,9 +14,12 @@ def transform_data(data, id_equiv, call_equiv, year, call):
         year: Year of the data.
         call: Call name.
     """
+    # Exception: Remove GERMANY 2020 extraordinary row with no grades
+    if data[3][0] == "ALE" and year == 2020 and call_equiv[call] == 1:
+        data.pop(3)
 
     # Exception: Remove ITALIAN 2023 extraordinary row with no grades
-    if data[19][0] == "ITA" and year == 2023:
+    elif data[19][0] == "ITA" and year == 2023 and call_equiv[call] == 1:
         data.pop(19)
 
     # Iterate over each row and transform values
