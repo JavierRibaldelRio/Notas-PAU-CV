@@ -1,8 +1,10 @@
 library(shiny)
 library(bslib)
 
+# Change
 last_year <- 2024
 
+# Structure of the page
 subjects <- function() {
   card(
     layout_sidebar(
@@ -14,6 +16,7 @@ subjects <- function() {
 
 # Content of the sidebar, main configurations
 sidebar_content <- function() {
+  # Form that selects
   tagList(
     # Stat selector
     radioButtons(
