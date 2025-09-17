@@ -62,6 +62,11 @@ server <- function(input, output, session) {
       sqlQuery
     )
 
+    # check if there is something to show
+    if (is.null(subjects_id) || length(subjects_id) == 0) {
+      return(NULL)
+    }
+
     plot <- ggplot(
       df,
       aes(x = year, y = !!sym(varname))
