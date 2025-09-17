@@ -15,7 +15,7 @@ ui <- page_navbar(
   # Navbar settings
   navbar_options = navbar_options(
     class = "bg-primary",
-    theme = c("auto", "light", "dark"),
+    theme = c("light", "auto", "dark"),
     underline = TRUE
   ),
 
@@ -25,39 +25,36 @@ ui <- page_navbar(
     subjects()
   ),
 
-  # Menu of regions
-  nav_menu(
-    "Regiones",
-    nav_panel(
-      "Provincia",
-      "1"
-    ),
-    nav_panel(
-      "Comarca",
-      "ASDF"
-    ),
-    nav_panel(
-      "Municipio",
-      "ASDF - Desde UI"
-    )
-  ),
+  # # Menu of regions
+  # nav_menu(
+  #   "Regiones",
+  #   nav_panel(
+  #     "Provincia",
+  #     "1"
+  #   ),
+  #   nav_panel(
+  #     "Comarca",
+  #     "ASDF"
+  #   ),
+  #   nav_panel(
+  #     "Municipio",
+  #     "ASDF - Desde UI"
+  #   )
+  # ),
 
-  # Menu of centers
-  nav_menu(
-    "Centros",
-    nav_panel(
-      "Centros",
-      "1"
-    ),
-    nav_panel(
-      "Buscador",
-      "ASDF"
-    ),
-  ),
+  # # Menu of centers
+  # nav_menu(
+  #   "Centros",
+  #   nav_panel(
+  #     "Centros",
+  #     "1"
+  #   ),
+  #   nav_panel(
+  #     "Buscador",
+  #     "ASDF"
+  #   ),
+  # ),
 
   # About us
   nav_panel("Sobre nosotros", "Pau y Javier"),
-
-  # Dark mode selector
-  nav_item(input_dark_mode(id = "mode")),
 )

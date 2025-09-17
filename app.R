@@ -2,6 +2,9 @@ library(shiny)
 library(bslib)
 library(DBI) # also install rsqlite
 library(pool)
+library(tidyverse)
+library(glue)
+library(rlang)
 
 # Import UI
 source("R/ui/ui.R")
@@ -28,17 +31,62 @@ server <- function(input, output, session) {
   # get options of selectize
   observe({
     df <- dbGetQuery(pool, "SELECT id, name FROM subjects")
-    print(df)
 
+    # choices con "etiqueta visible" = nombre y "valor" = id
     choices <- setNames(df$id, df$name)
 
-    # Cargar en el selectize (server=TRUE mejora rendimiento con muchas opciones)
     updateSelectizeInput(
       session,
-      "select-subject",
+      "select_subject",
       choices = choices,
+      selected = c(4, 30),
+      options = list(maxItems = 8),
       server = TRUE
     )
+  })
+
+  output$subjects_main <- renderPlot({
+    varname <- input$variable
+    call <- input$select_call
+    first_year <- input$years[1]
+    last_year <- input$years[2]
+
+    subjects_id <- input$select_subject
+    sqlQuery <- glue_sql(
+      "SELECT code, {`varname`}, subject_id, year  FROM subjects INNER JOIN marks ON subjects.id = marks.subject_id WHERE call = {call} AND year >= {first_year} AND year <= {last_year} AND subject_id IN ({subjects_id*})",
+      .con = pool
+    )
+
+    df <- dbGetQuery(
+      pool,
+      sqlQuery
+    )
+
+    print(df)
+
+    df |>
+      ggplot(aes(x = year, y = !!sym(varname), color = code)) +
+      geom_point() +
+      geom_line(size = 2) +
+      scale_x_continuous(
+        breaks = seq(
+          min(df$year, na.rm = TRUE),
+          max(df$year, na.rm = TRUE),
+          by = 2
+        )
+      ) +
+      guides(color = guide_legend(title = "Asignaturas")) +
+      labs(x = "Año", y = NULL, legend = NULL) +
+      theme_minimal() +
+      theme(
+        panel.grid.major = element_line(color = "gray90"),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.ticks = element_line(color = "black"),
+        plot.background = element_rect(fill = "white", color = NA),
+        panel.background = element_rect(fill = "white", color = NA),
+      )
   })
 }
 

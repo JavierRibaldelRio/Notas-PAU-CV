@@ -20,7 +20,7 @@ sidebar_content <- function() {
   tagList(
     # Stat selector
     radioButtons(
-      inputId = "radio",
+      inputId = "variable",
       label = "Variable",
       choices = list(
         "Presentados" = "candidates",
@@ -32,16 +32,16 @@ sidebar_content <- function() {
 
     # Call selector
     selectInput(
-      "select-call",
+      "select_call",
       "Convocatoria",
       list("Ordinaria" = 0, "Extraordinaria" = 1, "Global" = 2)
     ),
 
     # Graph selector
-    input_switch(
-      "visualization-mode",
-      "Mostrar como gráfico de barras"
-    ),
+    # input_switch(
+    #   "visualization_mode",
+    #   "Mostrar como gráfico de barras"
+    # ),
 
     # Years selector
     sliderInput(
@@ -54,16 +54,21 @@ sidebar_content <- function() {
     ),
 
     # Arima prediction
-    checkboxInput("predict", "Predicción", FALSE),
+    # checkboxInput("predict", "Predicción", FALSE),
   )
 }
 
 main_panel_content <- function() {
-  selectizeInput(
-    "select-subject",
-    "Asignaturas",
-    list(),
-    multiple = TRUE,
-    width = "100%"
+  tagList(
+    # Selector of subjects
+    selectizeInput(
+      "select_subject",
+      "Asignaturas",
+      list(),
+      multiple = TRUE,
+      width = "100%"
+    ),
+
+    plotOutput(outputId = "subjects_main")
   )
 }
