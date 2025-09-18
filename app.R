@@ -46,17 +46,20 @@ server <- function(input, output, session) {
   })
 
   output$subjects_main <- renderPlot({
+    # Get all the data of input
     varname <- input$variable
     call <- input$select_call
     first_year <- input$years[1]
     last_year <- input$years[2]
-
     subjects_id <- input$select_subject
+
+    # preparate query
     sqlQuery <- glue_sql(
       "SELECT code, {`varname`}, subject_id, year  FROM subjects INNER JOIN marks ON subjects.id = marks.subject_id WHERE call = {call} AND year >= {first_year} AND year <= {last_year} AND subject_id IN ({subjects_id*})",
       .con = pool
     )
 
+    # execute query
     df <- dbGetQuery(
       pool,
       sqlQuery
@@ -67,11 +70,13 @@ server <- function(input, output, session) {
       return(NULL)
     }
 
+    # creates the plot
     plot <- ggplot(
       df,
       aes(x = year, y = !!sym(varname))
     )
 
+    # checks if it is a barplot o a line plot
     if (input$visualization_mode) {
       plot <- plot +
         geom_col(position = "dodge", aes(fill = code))
@@ -88,7 +93,8 @@ server <- function(input, output, session) {
         )
     }
 
-    plot <- plot +
+    # configure the visual aspect of the plot, and return it
+    plot +
       guides(
         color = guide_legend(title = "Asignaturas"),
         fill = guide_legend(title = "Asignaturas")
@@ -104,8 +110,6 @@ server <- function(input, output, session) {
         plot.background = element_rect(fill = "white", color = NA),
         panel.background = element_rect(fill = "white", color = NA),
       )
-
-    plot
   })
 }
 
