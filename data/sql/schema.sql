@@ -17,7 +17,7 @@ standard_dev REAL NOT NULL,
 candidates_compulsory INTEGER NOT NULL,
 pass_compulsory INTEGER NOT NULL,
 candidates_optional INTEGER NOT NULL,
-pass_optional INTEGER NOT NULL,
+pass_optional INTEGER NOT NULL, coefficient_variation REAL,
 FOREIGN KEY(subject_id) REFERENCES subjects(id)
 );
 CREATE TABLE high_school_types(
@@ -97,7 +97,7 @@ CREATE TABLE high_school_marks(
     average_compulsory_pau REAL,
     standard_dev_pau REAL,
 
-    diference_average_bach_pau REAL,
+    diference_average_bach_pau REAL, coeff_variation_bach REAL, coeff_variation_pau REAL,
 
     FOREIGN KEY (high_school_id) REFERENCES high_schools(id)
 
