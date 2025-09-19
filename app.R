@@ -59,7 +59,7 @@ server <- function(input, output, session) {
       .con = pool
     )
 
-    # execute query
+    # execute query on db
     df <- dbGetQuery(
       pool,
       sqlQuery
