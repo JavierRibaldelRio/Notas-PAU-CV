@@ -4,7 +4,7 @@ library(DBI) # also install rsqlite
 library(pool)
 
 # Subjects
-source("R/ui/subjects.R")
+source("R/ui/subjects_ui.R")
 
 # Main UI of the page
 ui <- page_navbar(
