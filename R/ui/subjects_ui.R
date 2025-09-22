@@ -27,7 +27,7 @@ sidebar_content <- function() {
         "Aprobados" = "pass",
         "Aprobados (%)" = "pass_percentatge",
         "Media" = "average",
-        "Desviación Típica" = "standard_dev"
+        "Coeficiente de variación" = "coefficient_variation"
       )
     ),
 
