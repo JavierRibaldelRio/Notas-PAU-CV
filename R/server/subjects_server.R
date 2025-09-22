@@ -76,7 +76,7 @@ create_line_bar_plot <- function(input, output, session, pool) {
     } else {
       plot <- plot +
         geom_point(aes(color = code)) +
-        geom_line(size = 2, aes(color = code)) +
+        geom_line(linewidth = 2, aes(color = code)) +
         scale_x_continuous(
           breaks = seq(
             min(df$year, na.rm = TRUE),
