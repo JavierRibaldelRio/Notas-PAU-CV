@@ -28,7 +28,7 @@ create_options_selectize <- function(input, output, session, pool) {
       "select_subject",
       choices = choices,
       selected = c(4, 30),
-      options = list(maxItems = 8),
+      options = list(maxItems = 8), # comment to remove max
       server = TRUE
     )
   })
@@ -63,13 +63,23 @@ create_line_bar_plot <- function(input, output, session, pool) {
       return(NULL)
     }
 
+    # Calculate ylim
+
+    y_lims <- switch(
+      varname,
+      pass_percentatge = c(20, 100),
+      coefficient_variation = c(0, 75),
+      average = c(3, 9.5),
+      range(df[[varname]], na.rm = TRUE) # <- default
+    )
+
     # creates the plot
     plot <- ggplot(
       df,
       aes(x = year, y = !!sym(varname))
     )
 
-    # checks if it is a barplot o a line plot
+    # checks if it is a barplot or a line plot
     if (input$visualization_mode) {
       plot <- plot +
         geom_col(position = "dodge", aes(fill = code))
@@ -86,8 +96,15 @@ create_line_bar_plot <- function(input, output, session, pool) {
         )
     }
 
+    # Adds % symbol to pass_% and coefficiente of variation
+
+    if (varname == "pass_percentatge" || varname == "coefficient_variation") {
+      plot <- plot + scale_y_continuous(labels = function(x) paste0(x, "%"))
+    }
+
     # configure the visual aspect of the plot, and return it
     plot +
+      coord_cartesian(ylim = y_lims) +
       guides(
         color = guide_legend(title = "Asignaturas"),
         fill = guide_legend(title = "Asignaturas")
