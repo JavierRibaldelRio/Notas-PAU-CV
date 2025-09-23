@@ -1,11 +1,3 @@
-library(shiny)
-library(bslib)
-library(DBI) # also install rsqlite
-library(pool)
-library(tidyverse)
-library(glue)
-library(rlang)
-
 subjects_server <- function(input, output, session, pool) {
   # get subjects and use them as options of selectize
   create_options_selectize(input, output, session, pool)

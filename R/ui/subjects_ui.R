@@ -1,6 +1,3 @@
-library(shiny)
-library(bslib)
-
 # Change
 last_year <- 2024
 

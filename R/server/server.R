@@ -1,11 +1,3 @@
-library(shiny)
-library(bslib)
-library(DBI) # also install rsqlite
-library(pool)
-library(tidyverse)
-library(glue)
-library(rlang)
-
 DB_PATH <- "data/notas-pau.db"
 
 source("R/server/subjects_server.R")

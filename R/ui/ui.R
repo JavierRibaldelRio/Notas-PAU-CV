@@ -1,8 +1,3 @@
-library(shiny)
-library(bslib)
-library(DBI) # also install rsqlite
-library(pool)
-
 # Subjects
 source("R/ui/subjects_ui.R")
 
