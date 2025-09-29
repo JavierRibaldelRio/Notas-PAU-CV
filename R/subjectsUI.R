@@ -2,7 +2,7 @@
 last_year <- 2024
 
 # Structure of the page
-subjects <- function() {
+subjects <- function(id) {
   card(
     layout_sidebar(
       sidebar = sidebar_content(),
