@@ -102,30 +102,32 @@ def global_results_secondhalf(convo, year):
         pages = find_data(pdf)
         t1 = extract_up(pages[0])
         t2 = extract_down(pages[0])
-        t3 = extract_up(pages[1])
-        t4 = extract_down(pages[1])
+
+        # These tables consider exempted people
+        t3 = extract_up(pages[2])
+        t4 = extract_down(pages[2])
 
         # Manual positioning of the data to match the other function
         row = []
-        row.append(t1[3])
-        row.append(t2[3])
-        row.append(t3[4])
-        row.append(t3[5])
-        row.append(t3[3])
-        row.append(t3[2])
-        row.append(t3[9])
-        row.append(t3[7])
-        row.append(t4[1])
-        row.append(t4[2])
-        row.append(t4[3])
-        row.append(t4[4])
-        row.append(t4[5])
-        row.append(t4[8])
-        row.append(t4[7])
-        row.append(t2[4])
-        row.append(t2[6])
-        row.append(int(t2[3]) - int(t2[4]) - int(t2[6]))
-        row.append(t2[7])
+        row.append(t1[3]) # enrolled
+        row.append(t2[3]) # candidates
+        row.append(t3[4]) # pass
+        row.append(t3[5]) # pass_percentage
+        row.append(t3[3]) # candidates_men
+        row.append(t3[2]) # candidates_woman
+        row.append(t3[9]) # pass_percentage_man
+        row.append(t3[7]) # pass_percentage_woman
+        row.append(t4[1]) # average_bach
+        row.append(t4[2]) # standard_dev_bach
+        row.append(t4[3]) # average_pau
+        row.append(t4[4]) # standard_dev_pau
+        row.append(t4[5]) # average_nau
+        row.append(t4[8]) # standard_dev_nau
+        row.append(t4[7]) # final_average_pass
+        row.append(t2[4]) # exclusive_candidates_general
+        row.append(t2[6]) # exclusive_candidates_especific
+        row.append(int(t2[3]) - int(t2[4]) - int(t2[6])) # candidates_both
+        row.append(t2[7]) # fp_candidates_especific
 
         # Format table to the right types
         format_results(row)

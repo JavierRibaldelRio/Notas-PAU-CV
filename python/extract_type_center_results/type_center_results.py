@@ -11,6 +11,7 @@ def find_data(pdf, year):
         
         extracted_text = page.extract_text()
 
+        # Diferent distribution of data before 2017 and after
         if ("Resultats globals per tipus de centre" in extracted_text and year < 2017):
             w, h = page.width, page.height
 
@@ -22,6 +23,8 @@ def find_data(pdf, year):
 
             both = (t1, t2)
             pages.append(both)
+
+            # Just "one page"
             return pages
         
         elif (
@@ -48,7 +51,8 @@ def find_data(pdf, year):
             both = (t1, t2)
             pages.append(both)
 
-            if count == 2:
+            if count == 3:
+                # Three pages with two tables
                 return pages
 
 
@@ -143,25 +147,25 @@ def table_updown_secondhalf(page, idx):
     return table
 
 def tidy_data(row, t1, t2, t3, t4, type):
-    row.append(t1[type][2])
-    row.append(t2[type][2])
-    row.append(t3[type][4])
-    row.append(t3[type][5])
-    row.append(t3[type][3])
-    row.append(t3[type][2])
-    row.append(t3[type][9])
-    row.append(t3[type][7])
-    row.append(t4[type][1])
-    row.append(t4[type][2])
-    row.append(t4[type][3])
-    row.append(t4[type][4])
-    row.append(t4[type][5])
-    row.append(t4[type][8])
-    row.append(t4[type][7])
-    row.append(t2[type][4])
-    row.append(t2[type][6])
-    row.append(int(t2[type][2]) - int(t2[type][3]) - int(t2[type][5]))
-    row.append(t2[type][6])
+    row.append(t1[type][2]) # enrolled
+    row.append(t3[type][1]) # candidates
+    row.append(t3[type][4]) # pass
+    row.append(t3[type][5]) # pass_percentage
+    row.append(t3[type][3]) # candidates_men
+    row.append(t3[type][2]) # candidates_woman
+    row.append(t3[type][9]) # pass_percentage_man
+    row.append(t3[type][7]) # pass_percentage_woman
+    row.append(t4[type][1]) # average_bach
+    row.append(t4[type][2]) # standard_dev_bach
+    row.append(t4[type][3]) # average_pau
+    row.append(t4[type][4]) # standard_dev_pau
+    row.append(t4[type][5]) # average_nau
+    row.append(t4[type][8]) # standard_dev_nau
+    row.append(t4[type][7]) # final_average_pass
+    row.append(t2[type][3]) # exclusive_candidates_general
+    row.append(t2[type][5]) # exclusive_candidates_especific
+    row.append(int(t3[type][1]) - int(t2[type][3]) - int(t2[type][5])) # candidates_both
+    row.append(t2[type][6]) # fp_candidates_especific
     
 def type_center_results_secondhalf(call, year):
     with pdfplumber.open(f"../data/convocatorias/{call}/{year}-{call}.pdf") as pdf:
@@ -169,8 +173,10 @@ def type_center_results_secondhalf(call, year):
 
         t1 = table_updown_secondhalf(pages[0], 0)
         t2 = table_updown_secondhalf(pages[0], 1)
-        t3 = table_updown_secondhalf(pages[1], 0)
-        t4 = table_updown_secondhalf(pages[1], 1)
+
+        # These tables consider exempted people
+        t3 = table_updown_secondhalf(pages[2], 0)
+        t4 = table_updown_secondhalf(pages[2], 1)
 
         publico = [0]
         privado = [2]
