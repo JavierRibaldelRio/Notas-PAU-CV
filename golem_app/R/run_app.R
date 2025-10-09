@@ -34,8 +34,10 @@ run_app <- function(
 }
 
 
+# Creates the sqlite pool
+
 create_sqlite_pool <- function(
-  db_path = "../data/notas-pau.db",
+  db_path = "notas-pau.db",
   flags = RSQLite::SQLITE_RO,
   pragmas = c(
     journal_mode = "WAL",
