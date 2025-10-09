@@ -12,7 +12,7 @@ app_ui <- function(request) {
     golem_add_external_resources(),
     # Main page
     fluidPage(
-      theme = bslib::bs_theme(version = 5, bootswatch = "lumen"),
+      theme = bslib::bs_theme(version = 5, bootswatch = "litera"),
 
       class = "p-0",
       # Main UI of the page

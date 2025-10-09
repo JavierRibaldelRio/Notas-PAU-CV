@@ -3,10 +3,9 @@
 #' @description A shiny Module.
 #'
 #' @param id Internal parameters for {shiny}.
-#' @param last_year Last year of we ha
+#' @param last_year Last year of we have data of
 #' @noRd
 #'
-#' @importFrom shiny NS tagList
 mod_subjects_page_ui <- function(id, last_year) {
   ns <- NS(id)
 
@@ -87,7 +86,7 @@ main_panel_content_ui <- function(ns) {
 #' subjects_page Server Functions
 #'
 #' @noRd
-mod_subjects_page_server <- function(id) {
+mod_subjects_page_server <- function(id, pool) {
   moduleServer(id, function(input, output, session) {
     # get subjects and use them as options of selectize
     create_options_selectize(input, output, session, pool)
@@ -97,8 +96,6 @@ mod_subjects_page_server <- function(id) {
   })
 }
 
-
-subjects_server <- function(input, output, session, pool) {}
 
 # get subjects and use them as options of selectize
 
