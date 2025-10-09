@@ -10,3 +10,10 @@ output.csv
 rsconnect
 
 Notas-PAU-CV.Rproj
+.Rhistory
+.RData
+.httr-oauth
+.DS_Store
+.quarto
+
+*.tar.gz
