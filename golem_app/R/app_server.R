@@ -6,6 +6,8 @@
 #' @import bslib
 #' @import glue
 #' @import DBI
+#' @import RSQLite
+#' @import stats
 #' @import pool
 #' @import rlang
 #' @noRd

@@ -9,7 +9,6 @@
 mod_subjects_page_ui <- function(id, last_year) {
   ns <- NS(id)
 
-  print(last_year)
   tagList(
     card(
       layout_sidebar(

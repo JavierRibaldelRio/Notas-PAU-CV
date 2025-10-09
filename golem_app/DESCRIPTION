@@ -5,7 +5,7 @@ Authors@R: c(
     person("Javier", "Ribal del Río", , "javierribaldelrio@gmail.com", role = c("aut", "cre")),
     person("Pau", "Minguet Micó", , "pminmic@gmail.com", role = "aut")
   )
-License: What license is it under?
+License: MIT + file LICENSE
 Imports: 
     bslib,
     config,
@@ -13,6 +13,7 @@ Imports:
     ggplot2,
     golem,
     rlang,
+    RSQLite,
     shiny,
     tidyr,
     DBI,

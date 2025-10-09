@@ -2,11 +2,13 @@
 
 export(run_app)
 import(DBI)
+import(RSQLite)
 import(bslib)
 import(glue)
 import(pool)
 import(rlang)
 import(shiny)
+import(stats)
 importFrom(dplyr,across)
 importFrom(dplyr,arrange)
 importFrom(dplyr,desc)
