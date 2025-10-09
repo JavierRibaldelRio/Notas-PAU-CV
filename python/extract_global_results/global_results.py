@@ -4,8 +4,6 @@ import pdfplumber
 This file extracts the global results from all the calls and years
 """
 
-#! TODO: canvia el formato de la tabla a partir de 2017
-
 def find_data(pdf):
 
     # Pages split with tables
