@@ -3,7 +3,7 @@
 #' @description A shiny Module.
 #'
 #' @param id Internal parameters for {shiny}.
-#' @param last_year Last year of we have data of
+#' @param last_year Last year of we have data.
 #' @noRd
 #'
 mod_subjects_page_ui <- function(id, last_year) {

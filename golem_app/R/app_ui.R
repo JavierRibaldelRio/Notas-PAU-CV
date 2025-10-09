@@ -14,7 +14,7 @@ app_ui <- function(request) {
     fluidPage(
       theme = bslib::bs_theme(version = 5, bootswatch = "litera"),
 
-      class = "p-0",
+      class = "p-0", # margin necessary to remove white gap
       # Main UI of the page
       page_navbar(
         title = "Análisis Notas PAU",
