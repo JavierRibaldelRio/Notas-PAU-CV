@@ -99,21 +99,19 @@ mod_subjects_page_server <- function(id, pool) {
 # get subjects and use them as options of selectize
 
 create_options_selectize <- function(input, output, session, pool) {
-  observe({
-    df <- dbGetQuery(pool, "SELECT id, name FROM subjects")
+  df <- dbGetQuery(pool, "SELECT id, name FROM subjects")
 
-    # choices con "etiqueta visible" = nombre y "valor" = id
-    choices <- setNames(df$id, df$name)
+  # choices con "etiqueta visible" = nombre y "valor" = id
+  choices <- setNames(df$id, df$name)
 
-    updateSelectizeInput(
-      session,
-      "select_subject",
-      choices = choices,
-      selected = c(4, 30),
-      options = list(maxItems = 8), # comment to remove max
-      server = TRUE
-    )
-  })
+  updateSelectizeInput(
+    session,
+    "select_subject",
+    choices = choices,
+    selected = c(4, 30),
+    options = list(maxItems = 8), # comment to remove max
+    server = TRUE
+  )
 }
 
 # create main plot
@@ -138,10 +136,10 @@ create_line_bar_plot <- function(input, output, session, pool) {
     df <- dbGetQuery(
       pool,
       sqlQuery
-    ) 
-    
-    df_completo <- df |> 
-      complete(code,year=seq(first_year, last_year, by=1))
+    )
+
+    df_completo <- df |>
+      complete(code, year = seq(first_year, last_year, by = 1))
 
     # check if there is something to show
     if (is.null(subjects_id) || length(subjects_id) == 0) {
@@ -173,11 +171,16 @@ create_line_bar_plot <- function(input, output, session, pool) {
       # line plot
       plot <- plot +
         # Dashed line that goes bellow
-        geom_line(linewidth = 2,  linetype = "dashed",aes(color = code)) + 
-        
+        geom_line(linewidth = 2, linetype = "dashed", aes(color = code)) +
+
         # Solid line overposed to dashed line
-        geom_line(data=df_completo ,linewidth = 2, aes(color = code), na.rm = TRUE) +
-        
+        geom_line(
+          data = df_completo,
+          linewidth = 2,
+          aes(color = code),
+          na.rm = TRUE
+        ) +
+
         # Point
         geom_point(size = 4, aes(color = code)) +
         scale_x_continuous(
