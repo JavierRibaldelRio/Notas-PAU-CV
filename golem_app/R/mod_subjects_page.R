@@ -166,6 +166,7 @@ create_line_bar_plot <- function(input, output, session, pool) {
       plot <- plot +
         geom_col(position = "dodge", aes(fill = code))
     } else {
+      # line plot
       plot <- plot +
         geom_point(aes(color = code)) +
         geom_line(linewidth = 2, aes(color = code)) +
@@ -186,7 +187,8 @@ create_line_bar_plot <- function(input, output, session, pool) {
 
     # configure the visual aspect of the plot, and return it
     plot +
-      coord_cartesian(ylim = y_lims) +
+      # Sets fixed ylim by range and years 
+      coord_cartesian(ylim = y_lims,xlim= c(first_year, last_year)) +
       guides(
         color = guide_legend(title = "Asignaturas"),
         fill = guide_legend(title = "Asignaturas")
