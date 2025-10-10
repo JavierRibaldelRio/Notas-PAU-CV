@@ -138,15 +138,19 @@ create_line_bar_plot <- function(input, output, session, pool) {
     df <- dbGetQuery(
       pool,
       sqlQuery
-    )
+    ) 
+    
+    df_completo <- df |> 
+      complete(code,year=seq(first_year, last_year, by=1))
 
     # check if there is something to show
     if (is.null(subjects_id) || length(subjects_id) == 0) {
       return(NULL)
     }
 
-    # Calculate ylim
+    # Adds NA
 
+    # Calculate ylim
     y_lims <- switch(
       varname,
       pass_percentatge = c(20, 100),
@@ -168,8 +172,14 @@ create_line_bar_plot <- function(input, output, session, pool) {
     } else {
       # line plot
       plot <- plot +
-        geom_point(aes(color = code)) +
-        geom_line(linewidth = 2, aes(color = code)) +
+        # Dashed line that goes bellow
+        geom_line(linewidth = 2,  linetype = "dashed",aes(color = code)) + 
+        
+        # Solid line overposed to dashed line
+        geom_line(data=df_completo ,linewidth = 2, aes(color = code), na.rm = TRUE) +
+        
+        # Point
+        geom_point(size = 4, aes(color = code)) +
         scale_x_continuous(
           breaks = seq(
             min(df$year, na.rm = TRUE),
@@ -187,8 +197,8 @@ create_line_bar_plot <- function(input, output, session, pool) {
 
     # configure the visual aspect of the plot, and return it
     plot +
-      # Sets fixed ylim by range and years 
-      coord_cartesian(ylim = y_lims,xlim= c(first_year, last_year)) +
+      # Sets fixed ylim by range and years
+      coord_cartesian(ylim = y_lims, xlim = c(first_year, last_year)) +
       guides(
         color = guide_legend(title = "Asignaturas"),
         fill = guide_legend(title = "Asignaturas")

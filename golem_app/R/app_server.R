@@ -10,6 +10,7 @@
 #' @import stats
 #' @import pool
 #' @import rlang
+#' @import tidyr
 #' @noRd
 app_server <- function(input, output, session) {
   # Your application server logic
