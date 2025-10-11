@@ -11,10 +11,9 @@ app_ui <- function(request) {
     # Leave this function for adding external resources
     golem_add_external_resources(),
     # Main page
-    fluidPage(
+    fillPage(
       theme = bslib::bs_theme(version = 5, bootswatch = "litera"),
 
-      class = "p-0", # margin necessary to remove white gap
       # Main UI of the page
       page_navbar(
         title = "Análisis Notas PAU",
