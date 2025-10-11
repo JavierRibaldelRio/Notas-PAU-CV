@@ -138,6 +138,7 @@ create_line_bar_plot <- function(input, output, session, pool) {
       sqlQuery
     )
 
+    # The same as df but includes missing convinations
     df_completo <- df |>
       complete(code, year = seq(first_year, last_year, by = 1))
 
