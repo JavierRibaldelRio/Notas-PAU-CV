@@ -11,7 +11,6 @@ mod_subjects_page_ui <- function(id, last_year) {
 
   tagList(
     navset_card_tab(
-
       # Panel 1: plots
       nav_panel(
         "Gráficas",
@@ -21,7 +20,7 @@ mod_subjects_page_ui <- function(id, last_year) {
         )
       ),
 
-      nav_panel("Todos los datos",all_data_table(ns))
+      nav_panel("Todos los datos", DTOutput(ns("table_all_data")))
     )
   )
 }
@@ -88,18 +87,12 @@ main_panel_content_ui <- function(ns) {
   )
 }
 
-# table of all the data
-all_data_table <- function(ns){
-  dataTableOutput(ns("all-data")) 
-}
-
 
 #' subjects_page Server Functions
 #'
 #' @noRd
 mod_subjects_page_server <- function(id, pool) {
   moduleServer(id, function(input, output, session) {
-
     # Graph View
     #############
     # get subjects and use them as options of selectize
@@ -108,13 +101,9 @@ mod_subjects_page_server <- function(id, pool) {
     # create main plot
     create_line_bar_plot(input, output, session, pool)
 
-
-
     # All data table
 
     create_all_data_table(input, output, session, pool)
-
-
   })
 }
 
@@ -248,18 +237,65 @@ create_line_bar_plot <- function(input, output, session, pool) {
 
 # Obtains all the data from the database and renders it to the database
 
-create_all_data_table <- function(input, output, session, pool){
+create_all_data_table <- function(input, output, session, pool) {
+  sqlQuery <- "
+      SELECT
+        name  AS Nombre,
+        year  AS Año,
+        call  AS Convocatoria,
+        candidates AS Presentados,
+        pass  AS Aptos,
+        pass_percentatge AS Aptos2,
+        average AS Media,
+        coefficient_variation
+      FROM subjects
+      INNER JOIN marks ON subjects.id = marks.subject_id
+    "
+  df_pre <- dbGetQuery(
+      pool,
+      sqlQuery
+    ) |>
+    mutate(
+      Convocatoria = case_match(
+        as.integer(Convocatoria),
+        0 ~ "Ordinaria",
+        1 ~ "Extra",
+        2 ~ "Global",
+        .default = NA
+      ) |>
+        factor(levels = c("Ordinaria", "Extra", "Global")),
+      `Aptos (%)` = Aptos2,
+      `Coef. Variación` = coefficient_variation
+    ) |>
+    select(
+      Nombre,
+      Año,
+      Convocatoria,
+      Presentados,
+      Aptos,
+      `Aptos (%)`,
+      Media,
+      `Coef. Variación`      
+    )
 
-  # preparate query
-  sqlQuery <- "SELECT name, year, call,  subject_id, year  FROM subjects INNER JOIN marks ON subjects.id = marks.subject_id WHERE call = {call} AND year >= {first_year} AND year <= {last_year} AND subject_id IN ({subjects_id*})",
-  
-  all_data <- dbGetQuery(
-    pool,
-    sqlQuery
-  )
-
-  renderDataTable({datatable(penguins)}) 
-  
+  # Render DT with built-in column filters
+  output$table_all_data <- renderDT({
+    datatable(
+      df_pre,
+      filter = list(position = "top"),
+      rownames = TRUE,
+      options = list(
+        pageLength = 25,
+        lengthChange = FALSE, # hide "Show n entries"
+        dom = "tp", # filters + table + info + pagination
+        columnDefs = list(
+          list(targets = c(4, 5, 6, 7,8), searchable = FALSE), # disable filter on Aptos(%)
+          list(targets = c( 4, 5, 6, 7,8), className = "dt-right") # right-align numeric cols
+        )
+      )
+    ) |> 
+      formatRound(columns = c("Media","Coef. Variación"), digits = 3) 
+  })
 }
 
 ## To be copied in the UI
