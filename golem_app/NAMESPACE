@@ -2,6 +2,7 @@
 
 export(run_app)
 import(DBI)
+import(DT)
 import(RSQLite)
 import(bslib)
 import(glue)

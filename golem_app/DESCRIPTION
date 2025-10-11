@@ -16,6 +16,7 @@ Imports:
     RSQLite,
     shiny,
     tidyr,
+    DT,
     DBI,
     glue,
     pool

@@ -10,11 +10,18 @@ mod_subjects_page_ui <- function(id, last_year) {
   ns <- NS(id)
 
   tagList(
-    card(
-      layout_sidebar(
-        sidebar = subjects_sidebar_ui(ns, last_year = last_year),
-        main_panel_content_ui(ns)
-      )
+    navset_card_tab(
+
+      # Panel 1: plots
+      nav_panel(
+        "Gráficas",
+        layout_sidebar(
+          sidebar = subjects_sidebar_ui(ns, last_year = last_year),
+          main_panel_content_ui(ns)
+        )
+      ),
+
+      nav_panel("Todos los datos",all_data_table(ns))
     )
   )
 }
@@ -81,17 +88,33 @@ main_panel_content_ui <- function(ns) {
   )
 }
 
+# table of all the data
+all_data_table <- function(ns){
+  dataTableOutput(ns("all-data")) 
+}
+
 
 #' subjects_page Server Functions
 #'
 #' @noRd
 mod_subjects_page_server <- function(id, pool) {
   moduleServer(id, function(input, output, session) {
+
+    # Graph View
+    #############
     # get subjects and use them as options of selectize
     create_options_selectize(input, output, session, pool)
 
     # create main plot
     create_line_bar_plot(input, output, session, pool)
+
+
+
+    # All data table
+
+    create_all_data_table(input, output, session, pool)
+
+
   })
 }
 
@@ -220,6 +243,23 @@ create_line_bar_plot <- function(input, output, session, pool) {
         panel.background = element_rect(fill = "white", color = NA),
       )
   })
+}
+
+
+# Obtains all the data from the database and renders it to the database
+
+create_all_data_table <- function(input, output, session, pool){
+
+  # preparate query
+  sqlQuery <- "SELECT name, year, call,  subject_id, year  FROM subjects INNER JOIN marks ON subjects.id = marks.subject_id WHERE call = {call} AND year >= {first_year} AND year <= {last_year} AND subject_id IN ({subjects_id*})",
+  
+  all_data <- dbGetQuery(
+    pool,
+    sqlQuery
+  )
+
+  renderDataTable({datatable(penguins)}) 
+  
 }
 
 ## To be copied in the UI
