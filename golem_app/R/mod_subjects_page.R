@@ -20,7 +20,14 @@ mod_subjects_page_ui <- function(id, last_year) {
         )
       ),
 
-      nav_panel("Todos los datos", DTOutput(ns("table_all_data")))
+      # Panel 2: browse data set
+      nav_panel("Todos los datos", DTOutput(ns("table_all_data"))),
+
+      # Panel 3: heatmap
+
+      nav_panel(em("Heatmap"), heat_map_layout_ui(ns)),
+
+      nav_panel(em("Ranking"),mod_ranking_ui("ranking_1"))
     )
   )
 }
@@ -88,6 +95,26 @@ main_panel_content_ui <- function(ns) {
 }
 
 
+# Heatmap layout
+heat_map_layout_ui <- function(ns) {
+  tagList(
+    radioButtons(
+      inputId = "selector_heatmap",
+      label = "Variable",
+      inline = TRUE,
+      choices = list(
+        "Presentados" = "candidates",
+        "Aprobados (%)" = "pass_percentatge",
+        "Media" = "average",
+        "Coeficiente de variación" = "coefficient_variation"
+      )
+    ),
+
+    plotOutput(ns("heatmap_subjects"))
+  )
+}
+
+
 #' subjects_page Server Functions
 #'
 #' @noRd
@@ -102,8 +129,15 @@ mod_subjects_page_server <- function(id, pool) {
     create_line_bar_plot(input, output, session, pool)
 
     # All data table
-
     create_all_data_table(input, output, session, pool)
+
+    # Heatmap
+    create_heatmap_subjects(input, output, session, pool)
+
+    # Ranking
+
+    mod_ranking_server("ranking_1",pool)
+
   })
 }
 
@@ -252,9 +286,9 @@ create_all_data_table <- function(input, output, session, pool) {
       INNER JOIN marks ON subjects.id = marks.subject_id
     "
   df_pre <- dbGetQuery(
-      pool,
-      sqlQuery
-    ) |>
+    pool,
+    sqlQuery
+  ) |>
     mutate(
       Convocatoria = case_match(
         as.integer(Convocatoria),
@@ -275,7 +309,7 @@ create_all_data_table <- function(input, output, session, pool) {
       Aptos,
       `Aptos (%)`,
       Media,
-      `Coef. Variación`      
+      `Coef. Variación`
     )
 
   # Render DT with built-in column filters
@@ -289,12 +323,12 @@ create_all_data_table <- function(input, output, session, pool) {
         lengthChange = FALSE, # hide "Show n entries"
         dom = "tp", # filters + table + info + pagination
         columnDefs = list(
-          list(targets = c(4, 5, 6, 7,8), searchable = FALSE), # disable filter on Aptos(%)
-          list(targets = c( 4, 5, 6, 7,8), className = "dt-right") # right-align numeric cols
+          list(targets = c(4, 5, 6, 7, 8), searchable = FALSE), # disable filter on Aptos(%)
+          list(targets = c(4, 5, 6, 7, 8), className = "dt-right") # right-align numeric cols
         )
       )
-    ) |> 
-      formatRound(columns = c("Media","Coef. Variación"), digits = 3) 
+    ) |>
+      formatRound(columns = c("Media", "Coef. Variación"), digits = 3)
   })
 }
 
@@ -303,3 +337,49 @@ create_all_data_table <- function(input, output, session, pool) {
 
 ## To be copied in the server
 # mod_subjects_page_server("subjects_page_1")
+
+#  Creates the heatmap of subjects
+
+create_heatmap_subjects <- function(input, output, session, pool) {
+  output$heatmap_subjects <- renderPlot({
+    varname <- input$selector_heatmap
+
+    # preparate query
+    sqlQuery <- glue_sql(
+      "SELECT code, name, average, subject_id, year FROM subjects INNER JOIN marks ON subjects.id = marks.subject_id WHERE call = 2",
+      .con = pool
+    )
+
+    df <- dbGetQuery(
+      pool,
+      sqlQuery
+    ) |>
+      add_count(name, name = "n_obs") |>  # Sorts by the number of observations of each subject and then  by name
+      arrange(n_obs, name)
+
+    print(df)
+
+    df |>
+      ggplot(aes(x = year, y = name, fill = average)) +
+      geom_tile(
+        color = "white",
+        linewidth = 0.2,
+        width = 1,
+        height = 1
+      ) +
+      scale_fill_gradient(
+        low = "#c22d22ff",
+        high = "#34f83eff",
+        space = "Lab",
+        na.value = "grey50",
+        name = "Average",
+      ) +
+      scale_y_discrete(expand = expansion(mult = c(0.01, 0.01))) +
+      labs(
+        x = "Año",
+        y = "Asignatura",
+      ) +
+      # Tema limpio y legible
+      theme_minimal(base_size = 12)
+  })
+}
