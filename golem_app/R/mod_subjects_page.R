@@ -27,7 +27,7 @@ mod_subjects_page_ui <- function(id, last_year) {
 
       nav_panel(em("Heatmap"), heat_map_layout_ui(ns)),
 
-      nav_panel(em("Ranking"),mod_ranking_ui("ranking_1"))
+      nav_panel(em("Ranking"), mod_ranking_ui("ranking_1"))
     )
   )
 }
@@ -99,18 +99,19 @@ main_panel_content_ui <- function(ns) {
 heat_map_layout_ui <- function(ns) {
   tagList(
     radioButtons(
-      inputId = "selector_heatmap",
-      label = "Variable",
+      inputId = ns("selector_heatmap"),
+      label = " ",
       inline = TRUE,
       choices = list(
-        "Presentados" = "candidates",
         "Aprobados (%)" = "pass_percentatge",
         "Media" = "average",
         "Coeficiente de variación" = "coefficient_variation"
       )
     ),
-
-    plotOutput(ns("heatmap_subjects"))
+    div(
+      style = "overflow-y: scroll;",
+      plotOutput(ns("heatmap_subjects"), height = "800px")
+    )
   )
 }
 
@@ -136,8 +137,7 @@ mod_subjects_page_server <- function(id, pool) {
 
     # Ranking
 
-    mod_ranking_server("ranking_1",pool)
-
+    mod_ranking_server("ranking_1", pool)
   })
 }
 
@@ -346,40 +346,62 @@ create_heatmap_subjects <- function(input, output, session, pool) {
 
     # preparate query
     sqlQuery <- glue_sql(
-      "SELECT code, name, average, subject_id, year FROM subjects INNER JOIN marks ON subjects.id = marks.subject_id WHERE call = 2",
+      "SELECT code, name, {`varname`} as value, subject_id, year FROM subjects INNER JOIN marks ON subjects.id = marks.subject_id WHERE call = 2",
       .con = pool
     )
 
+    # Get the dataframe
     df <- dbGetQuery(
       pool,
       sqlQuery
-    ) |>
-      add_count(name, name = "n_obs") |>  # Sorts by the number of observations of each subject and then  by name
-      arrange(n_obs, name)
-
-    print(df)
-
+    ) 
+      
+    # Creates the heatmap
     df |>
-      ggplot(aes(x = year, y = name, fill = average)) +
+      add_count(name, name = "n_obs") |> # Sorts by the number of observations of each subject and then  by name
+      group_by(name) |>
+      mutate(n_obs = sum(!is.na(value))) |>
+      ungroup() |>
+      arrange(n_obs, desc(name)) |>
+      mutate(name = factor(name, levels = unique(name))) |> 
+      ggplot(aes(x = year, y = name, fill =  value)) +
       geom_tile(
         color = "white",
-        linewidth = 0.2,
-        width = 1,
-        height = 1
+        linewidth = 0,
+        width = 0.95,
+        height = 0.85,
       ) +
-      scale_fill_gradient(
+      geom_text(aes(
+        label = number(value, accuracy = 0.1),
+        fontface = "bold",
+        size = 4
+      )) +
+      coord_fixed(ratio = 0.375) +
+      scale_fill_gradient2(
         low = "#c22d22ff",
+        mid = "#e3e63bff",
         high = "#34f83eff",
-        space = "Lab",
-        na.value = "grey50",
-        name = "Average",
+        midpoint = mean(df$value, na.rm =TRUE),
+
+        # Título de la leyenda de intensidad de color
+        name = " "
+      ) +
+      scale_x_continuous(
+        breaks = seq(min(df$year), max(df$year), by = 1),
+        sec.axis = dup_axis()
       ) +
       scale_y_discrete(expand = expansion(mult = c(0.01, 0.01))) +
+      guides(size = "none") +
       labs(
         x = "Año",
         y = "Asignatura",
       ) +
       # Tema limpio y legible
-      theme_minimal(base_size = 12)
+      theme_minimal(base_size = 12) +
+      theme(
+        panel.grid = element_blank(),
+        axis.text.x = element_text(color = "black", size = 12),
+        axis.text.y = element_text(color = "black", size = 12)
+      )
   })
 }

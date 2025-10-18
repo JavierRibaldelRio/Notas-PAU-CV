@@ -10,6 +10,9 @@
 #' @import stats
 #' @import pool
 #' @import rlang
+#' @import scales
+#' @import ggplot2
+#' @import forcats
 #' @import tidyr
 #' @import DT
 #' @noRd
