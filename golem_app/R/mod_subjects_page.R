@@ -27,7 +27,7 @@ mod_subjects_page_ui <- function(id, last_year) {
 
       nav_panel(em("Heatmap"), heat_map_layout_ui(ns)),
 
-      nav_panel(em("Ranking"), mod_ranking_ui("ranking_1"))
+      nav_panel(em("Ranking"),mod_ranking_ui(ns("ranking_1")))
     )
   )
 }
@@ -121,6 +121,8 @@ heat_map_layout_ui <- function(ns) {
 #' @noRd
 mod_subjects_page_server <- function(id, pool) {
   moduleServer(id, function(input, output, session) {
+
+    ns <- session$ns
     # Graph View
     #############
     # get subjects and use them as options of selectize
