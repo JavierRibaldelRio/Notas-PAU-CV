@@ -12,10 +12,8 @@
 mod_ranking_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    br(), # Separation between the top of the card and selector
     div(
       class = "mod-ranking",
-
       fluidRow(
         # Centered container
         column(
@@ -24,35 +22,9 @@ mod_ranking_ui <- function(id) {
 
           # This creates the gray background
           wellPanel(
-            fluidRow(
-              # Radio buttons
-              column(
-                width = 6,
-                align = "center",
-                radioButtons(
-                  inputId = ns("ranking_subjects"),
-                  label = "Modo de visualización",
-                  choices = list("Global", "Año"),
-                  selected = "Global",
-                  inline = TRUE
-                )
-              ),
-
-              # Selector (only appears if "Año" is selected)
-              column(
-                width = 6,
-                align = "center",
-                conditionalPanel(
-                  ns = ns,
-                  condition = "input.ranking_subjects == 'Año'",
-                  selectInput(
-                    ns("ranking_subjects_select"),
-                    "Selecciona el año",
-                    choices = 2010:2024,
-                    width = "100%"
-                  )
-                )
-              )
+            mod_mean_year_selector_ui(
+              ns("mean_year_selector_1"),
+              label = "",
             )
           )
         )
@@ -137,21 +109,23 @@ transform_to_table <- function(dt) {
 mod_ranking_server <- function(id, pool) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+    selected_year <- mod_mean_year_selector_server("mean_year_selector_1")
+
 
     # Data extraction from DB
     datos_brutos <- reactive({
-      opcion <- input$ranking_subjects
+      opcion <-selected_year()
+
 
       # Different query for different the selected table
-      if (opcion == "Global") {
+      if (opcion == 0) {
         df <- dbGetQuery(
           pool,
           "SELECT subjects.name, marks.average, marks.candidates FROM marks INNER JOIN subjects ON subjects.id = marks.subject_id;"
         )
         return(df)
-      } else if (opcion == "Año") {
-        req(input$ranking_subjects_select)
-        year <- input$ranking_subjects_select
+      } else  {
+        year <- opcion
 
         # call = 2 to get the data of global of a single year
         sql_query <- glue_sql(
