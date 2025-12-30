@@ -28,7 +28,9 @@ app_ui <- function(request) {
 
         # Page 1 subjects
         nav_panel(
+          value="subjects",
           "Asignaturas",
+          
           mod_subjects_page_ui("subjects_page_1", 2024)
         ),
 
@@ -63,7 +65,7 @@ app_ui <- function(request) {
         # ),
 
         # About us
-        nav_panel("Sobre nosotros", "Pau y Javier"),
+        nav_panel("Sobre nosotros",value="about" ,"Pau y Javier"),
       )
     )
   )
