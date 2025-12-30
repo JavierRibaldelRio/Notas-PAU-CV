@@ -320,6 +320,8 @@ create_all_data_table <- function(input, output, session, pool) {
       df_pre,
       filter = list(position = "top"),
       rownames = TRUE,
+      # allow only to select one row
+      selection= "single",
       options = list(
         pageLength = 25,
         lengthChange = FALSE, # hide "Show n entries"

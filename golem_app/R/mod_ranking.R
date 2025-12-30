@@ -175,6 +175,8 @@ mod_ranking_server <- function(id, pool) {
       # Return dt
       datatable(
         final_data,
+        # allow only to select one row
+        selection= "single",
         container = sketch,
         rownames = FALSE,
         options = list(
