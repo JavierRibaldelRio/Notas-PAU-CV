@@ -1,0 +1,41 @@
+.mean-year-input .shiny-options-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5rem;
+  justify-content: space-evenly;
+  width: 100%;
+}
+
+.mean-year-input .shiny-options-group .radio-inline {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.mean-year-input .shiny-options-group .radio-inline span {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+}
+
+.mean-year-input .shiny-options-group .radio-inline span .shiny-input-container {
+  display: flex;
+  flex: 1;
+  gap: 0.75rem;
+  align-items: center;
+  min-width: 0;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.mean-year-input .shiny-options-group .radio-inline span .shiny-input-container div {
+  flex: 1;
+  min-width: 5em;
+}
+
+.mean-year-input .shiny-options-group .radio-inline span label {
+  margin: 0;
+}
