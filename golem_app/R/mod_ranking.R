@@ -2,6 +2,8 @@
 #'
 #' @description A shiny Module.
 #'
+#' Uses CSS from external file
+#'
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
 #' @noRd
@@ -10,92 +12,59 @@
 mod_ranking_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    # CSS for the table
-    tags$head(
-      tags$style(HTML(
-        paste0(
-          "#",
-          ns("ranking_subjects_dt"),
-          " table.dataTable { font-size: 16px !important; border: 2px solid #555 !important;}",
-
-          "#",
-          ns("ranking_subjects_dt"),
-          " table.dataTable td, ",
-          "#",
-          ns("ranking_subjects_dt"),
-          " table.dataTable th { ",
-          "   vertical-align: middle !important;",
-          "}",
-
-          "#",
-          ns("ranking_subjects_dt"),
-          " thead tr:first-child th { text-align: center; }",
-
-          "#",
-          ns("ranking_subjects_dt"),
-          " thead tr:first-child th, ",
-          "#",
-          ns("ranking_subjects_dt"),
-          " thead tr:nth-child(2) th:nth-child(2n) ,",
-          "#",
-          ns("ranking_subjects_dt"),
-          " tbody td:nth-child(2n+1) { 
-              border-right: 2px solid #999 !important; 
-          }"
-        )
-      ))
-    ),
-
     br(), # Separation between the top of the card and selector
+    div(
+      class = "mod-ranking",
 
-    fluidRow(
-      # Centered container
-      column(
-        width = 8,
-        offset = 2,
+      fluidRow(
+        # Centered container
+        column(
+          width = 8,
+          offset = 2,
 
-        # This creates the gray background
-        wellPanel(
-          fluidRow(
-            # Radio buttons
-            column(
-              width = 6,
-              align = "center",
-              radioButtons(
-                inputId = ns("ranking_subjects"),
-                label = "Modo de visualización",
-                choices = list("Global", "Año"),
-                selected = "Global",
-                inline = TRUE
-              )
-            ),
+          # This creates the gray background
+          wellPanel(
+            fluidRow(
+              # Radio buttons
+              column(
+                width = 6,
+                align = "center",
+                radioButtons(
+                  inputId = ns("ranking_subjects"),
+                  label = "Modo de visualización",
+                  choices = list("Global", "Año"),
+                  selected = "Global",
+                  inline = TRUE
+                )
+              ),
 
-            # Selector (only appears if "Año" is selected)
-            column(
-              width = 6,
-              align = "center",
-              conditionalPanel(
-                ns = ns,
-                condition = "input.ranking_subjects == 'Año'",
-                selectInput(
-                  ns("ranking_subjects_select"),
-                  "Selecciona el año",
-                  choices = 2010:2024,
-                  width = "100%"
+              # Selector (only appears if "Año" is selected)
+              column(
+                width = 6,
+                align = "center",
+                conditionalPanel(
+                  ns = ns,
+                  condition = "input.ranking_subjects == 'Año'",
+                  selectInput(
+                    ns("ranking_subjects_select"),
+                    "Selecciona el año",
+                    choices = 2010:2024,
+                    width = "100%"
+                  )
                 )
               )
             )
           )
         )
-      )
-    ),
-    # Here we show the table
-    fluidRow(
-      # Centered table
-      column(
-        width = 10,
-        offset = 1,
-        DTOutput(ns("ranking_subjects_dt"))
+      ),
+      # Here we show the table
+      fluidRow(
+        # Centered table
+        column(
+          width = 10,
+          offset = 1,
+          DTOutput(ns("ranking_subjects_dt"))
+        )
       )
     )
   )
@@ -113,7 +82,6 @@ transform_to_table <- function(dt) {
       candidates = mean(candidates, na.rm = TRUE)
     ) |>
     ungroup()
-
 
   # Filter by grades
   notas_filtradas <- notas |>
@@ -172,7 +140,6 @@ mod_ranking_server <- function(id, pool) {
 
     # Data extraction from DB
     datos_brutos <- reactive({
-      req(input$ranking_subjects)
       opcion <- input$ranking_subjects
 
       # Different query for different the selected table
@@ -185,7 +152,6 @@ mod_ranking_server <- function(id, pool) {
       } else if (opcion == "Año") {
         req(input$ranking_subjects_select)
         year <- input$ranking_subjects_select
-
 
         # call = 2 to get the data of global of a single year
         sql_query <- glue_sql(
@@ -200,13 +166,13 @@ mod_ranking_server <- function(id, pool) {
 
     # Data transform
     datos_finales <- reactive({
-      req(datos_brutos()) # Wait until the data is ready
-      transform_to_table(datos_brutos())
+      datos <- req(datos_brutos())
+      transform_to_table(datos)
     })
 
     # Render the table
     output$ranking_subjects_dt <- renderDT({
-      req(datos_finales()) # Wait until the table is ready
+      final_data <- req(datos_finales()) # Wait until the table is ready
 
       # Custom header
       sketch <- withTags(table(
@@ -234,7 +200,7 @@ mod_ranking_server <- function(id, pool) {
 
       # Return dt
       datatable(
-        datos_finales(),
+        final_data,
         container = sketch,
         rownames = FALSE,
         options = list(
