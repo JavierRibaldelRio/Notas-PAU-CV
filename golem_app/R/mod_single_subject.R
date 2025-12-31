@@ -111,9 +111,12 @@ mod_single_subject_server <- function(id, pool) {
       }
 
       top_margin <- 20
+
+      # get primary color for plot
       theme <- bslib::bs_current_theme()
       primary_hex <- bslib::bs_get_variables(theme, varnames = "primary")
 
+      # line plot (RIGHT)
       line_plot <- sd |>
         ggplot(aes(x = year, y = !!sym(variable))) +
         geom_smooth(
@@ -131,12 +134,14 @@ mod_single_subject_server <- function(id, pool) {
           )
         ) +
         yLabel +
+        labs(x = "Año") +
         theme_base() +
         theme(
           plot.margin = margin(top_margin, 0, 0, 0),
           axis.title.y = element_blank()
         )
 
+      # box plot (LEFT)
       box_plot <- sd |>
         ggplot(aes(x = "", y = !!sym(variable))) +
         coord_cartesian(ylim = y_lims) +
@@ -151,6 +156,7 @@ mod_single_subject_server <- function(id, pool) {
           plot.margin = margin(top_margin, 0, 0, 0)
         )
 
+      # Put nexto and divide space 
       (box_plot | line_plot) + plot_layout(widths = c(2, 11))
     })
   })
