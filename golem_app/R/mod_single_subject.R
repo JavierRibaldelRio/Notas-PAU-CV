@@ -11,7 +11,10 @@ mod_single_subject_ui <- function(id) {
   ns <- NS(id)
   tagList(
     layout_column_wrap(
-      width = 1 / 2,
+      width = NULL,
+
+      style = css(grid_template_columns = "5fr 7fr "),
+
       # Left Column
 
       tagList(
@@ -21,8 +24,15 @@ mod_single_subject_ui <- function(id) {
         card(
           layout_column_wrap(
             width = NULL,
-            style = css(grid_template_columns = "1fr 2fr "),
+            style = css(grid_template_columns = "2fr 1fr "),
 
+            radioButtons(
+              ns("convocatoria_double_plot"),
+              label = "Convocatoria",
+              choices = c("Ordinaria" = 0, "Extraordinaria" = 1, "Global" = 2),
+              selected = 1,
+              inline = TRUE
+            ),
             selectizeInput(
               ns("double_plot_data"),
               "",
@@ -30,19 +40,18 @@ mod_single_subject_ui <- function(id) {
                 "Media" = "average",
                 "Aptos (%)" = "pass_percentatge"
               )
-            ),
-            radioButtons(
-              ns("convocatoria_double_plot"),
-              label = "Convocatoria",
-              choices = c("Ordinaria" = 0, "Extraordinaria" = 1, "Global" = 2),
-              selected = 1,
-              inline = TRUE
             )
           ),
           plotOutput(ns("double_plot"), width = "100%")
         )
       ),
-      "hoy es el gran final"
+      card(
+        mod_mean_year_selector_ui(
+          ns("mean_year_selector_2"),
+          label = "",
+        ),
+        plotOutput(ns("attendance_plot"), width = "100%")
+      )
     )
   )
 }
@@ -53,6 +62,8 @@ mod_single_subject_ui <- function(id) {
 mod_single_subject_server <- function(id, pool) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    selected_year <- mod_mean_year_selector_server("mean_year_selector_2")
 
     # fills the select with the subjects
     fill_subjects(
@@ -122,6 +133,7 @@ mod_single_subject_server <- function(id, pool) {
         geom_smooth(
           se = FALSE,
           method = "loess",
+          formula = 'y ~ x',
           color = primary_hex
         ) +
         coord_cartesian(ylim = y_lims) +
@@ -156,8 +168,89 @@ mod_single_subject_server <- function(id, pool) {
           plot.margin = margin(top_margin, 0, 0, 0)
         )
 
-      # Put nexto and divide space 
+      # Put nexto and divide space
       (box_plot | line_plot) + plot_layout(widths = c(2, 11))
+    })
+    output$attendance_plot <- renderPlot({
+      # get only data from global call
+      sd <- req(subject_data()) |>
+        filter(call == 2)
+
+      # Hacer la media de todas las columnas
+      df_mean <- sd |>
+        summarise(across(where(is.numeric), mean, na.rm = TRUE)) |>
+        mutate(
+          candidates_total = candidates,
+          pass_total = pass
+        ) |>
+        pivot_longer(
+          cols = c(
+            enrolled_total,
+            candidates_total,
+            pass_total,
+            candidates_compulsory,
+            pass_compulsory,
+            candidates_optional,
+            pass_optional
+          ),
+          names_to = "variable",
+          values_to = "mean"
+        ) |>
+        mutate(
+          scope = case_when(
+            str_detect(variable, "total") ~ "Total",
+            str_detect(variable, "compulsory") ~ "Compulsory",
+            str_detect(variable, "optional") ~ "Optional"
+          ),
+          type = case_when(
+            str_detect(variable, "enrolled") ~ "Matriculados",
+            str_detect(variable, "candidates") ~ "Presentados",
+            str_detect(variable, "pass") ~ "Aprobados"
+          )
+        ) |>
+
+        mutate(
+          scope = factor(
+            scope,
+            levels = c("Total", "Compulsory", "Optional")
+          ),
+          type = factor(
+            type,
+            levels = c("Aprobados", "Presentados", "Matriculados")
+          )
+        )
+      ggplot(df_mean, aes(x = type, y = mean, fill = type)) +
+        geom_col(
+          width = 0.6,
+          position = position_dodge2(
+            width = 0.6,
+            preserve = "single"
+          )
+        ) +
+        coord_flip() +
+          scale_y_continuous(
+            sec.axis = dup_axis(name = NULL)
+          ) +
+          
+        facet_grid(
+          rows = vars(scope),
+          scales = "free_y",
+          space = "free_y"
+                ) +
+        labs(
+          x = NULL,
+          y = NULL,
+          fill = NULL
+        ) +
+        theme(
+          strip.placement = "outside",
+          panel.spacing = unit(0, "pt"),
+          plot.margin = margin(0, 0, 0, 0),
+
+          strip.background = element_blank(),
+          panel.background = element_rect(fill = "grey95", color = NA)
+        ) +
+        theme_base()
     })
   })
 }
