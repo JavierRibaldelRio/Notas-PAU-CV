@@ -18,6 +18,12 @@ run_app <- function(
   uiPattern = "/",
   ...
 ) {
+
+  options(
+    shiny.usecairo = TRUE,
+    device = function(...) ragg::agg_png(..., res = 144)
+  )
+  
   with_golem_options(
     app = shinyApp(
       ui = app_ui,

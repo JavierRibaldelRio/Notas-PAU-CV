@@ -27,7 +27,10 @@ mod_subjects_page_ui <- function(id, last_year) {
 
       nav_panel(em("Heatmap"), heat_map_layout_ui(ns)),
 
-      nav_panel(em("Ranking"),mod_ranking_ui(ns("ranking_1")))
+      # Panel 4: ranking
+      nav_panel(em("Ranking"), mod_ranking_ui(ns("ranking_1"))),
+
+      nav_panel("Una asignatura", mod_single_subject_ui(ns("single_subject")))
     )
   )
 }
@@ -121,12 +124,11 @@ heat_map_layout_ui <- function(ns) {
 #' @noRd
 mod_subjects_page_server <- function(id, pool) {
   moduleServer(id, function(input, output, session) {
-
     ns <- session$ns
     # Graph View
     #############
     # get subjects and use them as options of selectize
-    create_options_selectize(input, output, session, pool)
+    fill_subjects(input, output, session, pool, "select_subject")
 
     # create main plot
     create_line_bar_plot(input, output, session, pool)
@@ -138,11 +140,10 @@ mod_subjects_page_server <- function(id, pool) {
     create_heatmap_subjects(input, output, session, pool)
 
     # Ranking
-
     mod_ranking_server("ranking_1", pool)
 
     #Single subject
-    mod_single_subject_server("single_subject",pool)
+    mod_single_subject_server("single_subject", pool)
   })
 }
 
@@ -241,17 +242,7 @@ create_line_bar_plot <- function(input, output, session, pool) {
         fill = guide_legend(title = "Asignaturas")
       ) +
       labs(x = "Año", y = NULL, legend = NULL) +
-      # TODO: modify look
-      theme_minimal() +
-      theme(
-        panel.grid.major = element_line(color = "gray90"),
-        panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        axis.line = element_line(color = "black"),
-        axis.ticks = element_line(color = "black"),
-        plot.background = element_rect(fill = "white", color = NA),
-        panel.background = element_rect(fill = "white", color = NA),
-      )
+      theme_base()
   })
 }
 
@@ -306,7 +297,7 @@ create_all_data_table <- function(input, output, session, pool) {
       filter = list(position = "top"),
       rownames = TRUE,
       # allow only to select one row
-      selection= "single",
+      selection = "single",
       options = list(
         pageLength = 25,
         lengthChange = FALSE, # hide "Show n entries"
@@ -343,8 +334,8 @@ create_heatmap_subjects <- function(input, output, session, pool) {
     df <- dbGetQuery(
       pool,
       sqlQuery
-    ) 
-      
+    )
+
     # Creates the heatmap
     df |>
       add_count(name, name = "n_obs") |> # Sorts by the number of observations of each subject and then  by name
@@ -352,8 +343,8 @@ create_heatmap_subjects <- function(input, output, session, pool) {
       mutate(n_obs = sum(!is.na(value))) |>
       ungroup() |>
       arrange(n_obs, desc(name)) |>
-      mutate(name = factor(name, levels = unique(name))) |> 
-      ggplot(aes(x = year, y = name, fill =  value)) +
+      mutate(name = factor(name, levels = unique(name))) |>
+      ggplot(aes(x = year, y = name, fill = value)) +
       geom_tile(
         color = "white",
         linewidth = 0,
@@ -370,7 +361,7 @@ create_heatmap_subjects <- function(input, output, session, pool) {
         low = "#c22d22ff",
         mid = "#e3e63bff",
         high = "#34f83eff",
-        midpoint = mean(df$value, na.rm =TRUE),
+        midpoint = mean(df$value, na.rm = TRUE),
 
         # Título de la leyenda de intensidad de color
         name = " "
@@ -389,8 +380,10 @@ create_heatmap_subjects <- function(input, output, session, pool) {
       theme_minimal(base_size = 12) +
       theme(
         panel.grid = element_blank(),
-        axis.text.x = element_text(color = "black", size = 12),
-        axis.text.y = element_text(color = "black", size = 12)
+        axis.title = element_text(family = "Lato",size = 16, color="black"), # Títulos ejes
+        axis.text = element_text(family = "Lato",size = 13, color="black"), # Texto de ticks
+        legend.title = element_text(family = "Lato",size = 15, color="black"), # Título leyenda
+        legend.text = element_text(family = "Lato",size = 13, color="black") # Texto leyenda
       )
   })
 }
