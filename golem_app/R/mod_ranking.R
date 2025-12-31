@@ -121,7 +121,7 @@ mod_ranking_server <- function(id, pool) {
       if (opcion == 0) {
         df <- dbGetQuery(
           pool,
-          "SELECT subjects.name, marks.average, marks.candidates FROM marks INNER JOIN subjects ON subjects.id = marks.subject_id;"
+          "SELECT subjects.name, marks.average, marks.candidates FROM marks INNER JOIN subjects ON subjects.id = marks.subject_id  WHERE call=2 ;"
         )
         return(df)
       } else  {
