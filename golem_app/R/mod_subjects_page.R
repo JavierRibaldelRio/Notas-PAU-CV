@@ -140,27 +140,12 @@ mod_subjects_page_server <- function(id, pool) {
     # Ranking
 
     mod_ranking_server("ranking_1", pool)
+
+    #Single subject
+    mod_single_subject_server("single_subject",pool)
   })
 }
 
-
-# get subjects and use them as options of selectize
-
-create_options_selectize <- function(input, output, session, pool) {
-  df <- dbGetQuery(pool, "SELECT id, name FROM subjects")
-
-  # choices con "etiqueta visible" = nombre y "valor" = id
-  choices <- setNames(df$id, df$name)
-
-  updateSelectizeInput(
-    session,
-    "select_subject",
-    choices = choices,
-    selected = c(4, 30),
-    options = list(maxItems = 8), # comment to remove max
-    server = TRUE
-  )
-}
 
 # create main plot
 
