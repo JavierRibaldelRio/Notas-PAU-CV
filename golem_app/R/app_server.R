@@ -14,6 +14,7 @@
 #' @import ggplot2
 #' @import forcats
 #' @import tidyr
+#' @import patchwork
 #' @import DT
 #' @noRd
 app_server <- function(input, output, session) {
