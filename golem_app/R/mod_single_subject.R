@@ -9,49 +9,48 @@
 #' @importFrom shiny NS tagList
 mod_single_subject_ui <- function(id) {
   ns <- NS(id)
-  tagList(
-    layout_column_wrap(
-      width = NULL,
+  layout_column_wrap(
+    width = NULL,
 
-      style = css(grid_template_columns = "5fr 7fr "),
+    style = css(grid_template_columns = "5fr 7fr "),
 
-      # Left Column
+    # Left Column
 
-      tagList(
-        wellPanel(
-          selectizeInput(ns("select_single_subject"), "Asignatura", list())
-        ),
-        card(
-          layout_column_wrap(
-            width = NULL,
-            style = css(grid_template_columns = "2fr 1fr "),
-
-            radioButtons(
-              ns("convocatoria_double_plot"),
-              label = "Convocatoria",
-              choices = c("Ordinaria" = 0, "Extraordinaria" = 1, "Global" = 2),
-              selected = 1,
-              inline = TRUE
-            ),
-            selectizeInput(
-              ns("double_plot_data"),
-              "",
-              choices = list(
-                "Media" = "average",
-                "Aptos (%)" = "pass_percentatge"
-              )
-            )
-          ),
-          plotOutput(ns("double_plot"), width = "100%")
-        )
+    tagList(
+      wellPanel(
+        selectizeInput(ns("select_single_subject"), "Asignatura", list())
       ),
       card(
-        mod_mean_year_selector_ui(
-          ns("mean_year_selector_2"),
-          label = "",
+        layout_column_wrap(
+          width = NULL,
+          style = css(grid_template_columns = "2fr 1fr "),
+
+          radioButtons(
+            ns("convocatoria_double_plot"),
+            label = "Convocatoria",
+            choices = c("Ordinaria" = 0, "Extraordinaria" = 1, "Global" = 2),
+            selected = 1,
+            inline = TRUE
+          ),
+          selectizeInput(
+            ns("double_plot_data"),
+            "",
+            choices = list(
+              "Media" = "average",
+              "Aptos (%)" = "pass_percentatge"
+            )
+          )
         ),
-        plotOutput(ns("attendance_plot"), width = "100%")
+        plotOutput(ns("double_plot"), width = "100%")
       )
+    ),
+    card(
+      mod_mean_year_selector_ui(
+        ns("mean_year_selector_2"),
+        label = "Nivel de agregación",
+        global_option = "Media interanual"
+      ),
+      plotOutput(ns("attendance_plot"), width = "100%")
     )
   )
 }
@@ -63,6 +62,19 @@ mod_single_subject_server <- function(id, pool) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    # get current theme
+    theme <- bslib::bs_current_theme()
+
+    # get current colors
+    bs_cols <- bslib::bs_get_variables(
+      theme,
+      varnames = c("success", "primary", "info")
+    )
+
+    # get primary color for plot
+    primary_hex <- bslib::bs_get_variables(theme, varnames = "primary")
+
+    # selector of mean and year
     selected_year <- mod_mean_year_selector_server("mean_year_selector_2")
 
     # fills the select with the subjects
@@ -74,18 +86,6 @@ mod_single_subject_server <- function(id, pool) {
       "select_single_subject",
       selected = 4
     )
-
-    # global data
-    global_data <- reactiveVal()
-
-    observe({
-      gd <- dbGetQuery(
-        pool,
-        "SELECT year, call, enrolled, pass_percentage AS pass_percentatge, average_pau AS average FROM global_results"
-      )
-
-      global_data(gd)
-    })
 
     # stores all the observations of a subject
     subject_data <- reactiveVal()
@@ -102,6 +102,7 @@ mod_single_subject_server <- function(id, pool) {
       subject_data(data)
     })
 
+    # whiskterplot + smooth
     output$double_plot <- renderPlot({
       # get data of the selected subject
       sd <- req(subject_data()) |>
@@ -122,10 +123,6 @@ mod_single_subject_server <- function(id, pool) {
       }
 
       top_margin <- 20
-
-      # get primary color for plot
-      theme <- bslib::bs_current_theme()
-      primary_hex <- bslib::bs_get_variables(theme, varnames = "primary")
 
       # line plot (RIGHT)
       line_plot <- sd |>
@@ -171,14 +168,24 @@ mod_single_subject_server <- function(id, pool) {
       # Put nexto and divide space
       (box_plot | line_plot) + plot_layout(widths = c(2, 11))
     })
+
+    # generates a col plot with facet grid which looks like just one plot
     output$attendance_plot <- renderPlot({
       # get only data from global call
       sd <- req(subject_data()) |>
         filter(call == 2)
 
-      # Hacer la media de todas las columnas
+      sel_year <- selected_year()
+
+      if (sel_year == 0) {
+        sd <- summarise(sd, across(where(is.numeric), mean, na.rm = TRUE))
+      } else {
+        sd <- filter(sd, year == sel_year)
+      }
+
+      # Preapares de subject data for the facet grid
       df_mean <- sd |>
-        summarise(across(where(is.numeric), mean, na.rm = TRUE)) |>
+        # Mean of each
         mutate(
           candidates_total = candidates,
           pass_total = pass
@@ -193,64 +200,88 @@ mod_single_subject_server <- function(id, pool) {
             candidates_optional,
             pass_optional
           ),
-          names_to = "variable",
+          names_to = c("type", "scope"),
+          names_pattern = "(enrolled|candidates|pass)_(total|compulsory|optional)",
           values_to = "mean"
         ) |>
         mutate(
-          scope = case_when(
-            str_detect(variable, "total") ~ "Total",
-            str_detect(variable, "compulsory") ~ "Compulsory",
-            str_detect(variable, "optional") ~ "Optional"
-          ),
-          type = case_when(
-            str_detect(variable, "enrolled") ~ "Matriculados",
-            str_detect(variable, "candidates") ~ "Presentados",
-            str_detect(variable, "pass") ~ "Aprobados"
-          )
-        ) |>
-
-        mutate(
-          scope = factor(
+          scope = recode(
             scope,
-            levels = c("Total", "Compulsory", "Optional")
+            total = "Total",
+            compulsory = "Obligatoria",
+            optional = "Opcional"
           ),
+          type = recode(
+            type,
+            enrolled = "Matriculados",
+            candidates = "Presentados",
+            pass = "Aprobados"
+          ),
+          scope = factor(scope, levels = c("Total", "Obligatoria", "Opcional")),
           type = factor(
             type,
             levels = c("Aprobados", "Presentados", "Matriculados")
           )
         )
+
       ggplot(df_mean, aes(x = type, y = mean, fill = type)) +
         geom_col(
           width = 0.6,
-          position = position_dodge2(
-            width = 0.6,
-            preserve = "single"
-          )
         ) +
         coord_flip() +
-          scale_y_continuous(
-            sec.axis = dup_axis(name = NULL)
-          ) +
-          
+        scale_y_continuous(
+          # duplicate axis
+          sec.axis = dup_axis(name = NULL),
+          # remove gap between col and axis
+          expand = expansion(mult = c(0, 0.05))
+        ) +
+        # set colors to theme colors
+        scale_fill_manual(
+          values = unname(bs_cols)
+        ) +
+
         facet_grid(
           rows = vars(scope),
           scales = "free_y",
-          space = "free_y"
-                ) +
+          space = "free_y",
+        ) +
+
         labs(
           x = NULL,
           y = NULL,
           fill = NULL
         ) +
+        theme_base() +
         theme(
-          strip.placement = "outside",
-          panel.spacing = unit(0, "pt"),
-          plot.margin = margin(0, 0, 0, 0),
+          # remove color legend
+          legend.position = "none",
 
+          # Mixe facets
+          panel.spacing = unit(0, "pt"),
+
+          panel.border = element_rect(
+            colour = "black",
+            fill = NA,
+            linewidth = 1
+          ),
+
+          # Strip to the right
+          strip.placement = "outside",
           strip.background = element_blank(),
-          panel.background = element_rect(fill = "grey95", color = NA)
-        ) +
-        theme_base()
+          strip.text.y.right = element_text(
+            angle = 0,
+            family = "Lato",
+            size = 15,
+            hjust = 0,
+            colour = "black"
+          ),
+
+          panel.grid.major.y = element_blank(),
+          panel.grid.minor = element_blank(),
+
+          # margin
+          plot.margin = margin(5, 10, 5, 5)
+        )
     })
   })
 }
