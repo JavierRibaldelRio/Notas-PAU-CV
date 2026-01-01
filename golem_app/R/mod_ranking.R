@@ -11,35 +11,33 @@
 #' @importFrom shiny NS tagList
 mod_ranking_ui <- function(id) {
   ns <- NS(id)
-  tagList(
-    div(
-      class = "mod-ranking",
-      fluidRow(
-        # Centered container
-        column(
-          width = 8,
-          offset = 2,
-
-          # This creates the gray background
-          wellPanel(
-            mod_mean_year_selector_ui(
-              ns("mean_year_selector_1"),
-              label = "",
-            )
-          )
-        )
-      ),
-      # Here we show the table
-      fluidRow(
-        # Centered table
-        column(
-          width = 10,
-          offset = 1,
-          DTOutput(ns("ranking_subjects_dt"))
+  layout_sidebar(
+    class = "mod-ranking",
+    
+    sidebar = sidebar(
+      open = "always",
+      width = 240,
+      
+      card(
+        class = "bg-light",
+        mod_mean_year_selector_ui(
+          ns("mean_year_selector_1"),
+          label = "Ámbito temporal",
         )
       )
-    )
+    ),
+    
+ 
+      
+
+      
+     
+        DTOutput(ns("ranking_subjects_dt"))
+     
+
+    
   )
+ 
 }
 
 # Transform data
