@@ -9,29 +9,27 @@
 mod_subjects_page_ui <- function(id, last_year) {
   ns <- NS(id)
 
-  tagList(
-    navset_card_tab(
-      # Panel 1: plots
-      nav_panel(
-        "Gráficas",
-        layout_sidebar(
-          sidebar = subjects_sidebar_ui(ns, last_year = last_year),
-          main_panel_content_ui(ns)
-        )
-      ),
+  navset_card_tab(
+    # Panel 1: plots
+    nav_panel(
+      "Gráficas",
+      layout_sidebar(
+        sidebar = subjects_sidebar_ui(ns, last_year = last_year),
+        main_panel_content_ui(ns)
+      )
+    ),
 
-      # Panel 2: browse data set
-      nav_panel("Todos los datos", DTOutput(ns("table_all_data"))),
+    # Panel 2: browse data set
+    nav_panel("Todos los datos", DTOutput(ns("table_all_data"))),
 
-      # Panel 3: heatmap
+    # Panel 3: heatmap
 
-      nav_panel(em("Heatmap"), heat_map_layout_ui(ns)),
+    nav_panel(em("Heatmap"), heat_map_layout_ui(ns)),
 
-      # Panel 4: ranking
-      nav_panel(em("Ranking"), mod_ranking_ui(ns("ranking_1"))),
+    # Panel 4: ranking
+    nav_panel(em("Ranking"), mod_ranking_ui(ns("ranking_1"))),
 
-      nav_panel("Una asignatura", mod_single_subject_ui(ns("single_subject")))
-    )
+    nav_panel("Una asignatura", mod_single_subject_ui(ns("single_subject")))
   )
 }
 
@@ -380,10 +378,14 @@ create_heatmap_subjects <- function(input, output, session, pool) {
       theme_minimal(base_size = 12) +
       theme(
         panel.grid = element_blank(),
-        axis.title = element_text(family = "Lato",size = 16, color="black"), # Títulos ejes
-        axis.text = element_text(family = "Lato",size = 13, color="black"), # Texto de ticks
-        legend.title = element_text(family = "Lato",size = 15, color="black"), # Título leyenda
-        legend.text = element_text(family = "Lato",size = 13, color="black") # Texto leyenda
+        axis.title = element_text(family = "Lato", size = 16, color = "black"), # Títulos ejes
+        axis.text = element_text(family = "Lato", size = 13, color = "black"), # Texto de ticks
+        legend.title = element_text(
+          family = "Lato",
+          size = 15,
+          color = "black"
+        ), # Título leyenda
+        legend.text = element_text(family = "Lato", size = 13, color = "black") # Texto leyenda
       )
   })
 }
