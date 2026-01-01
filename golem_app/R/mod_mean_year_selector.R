@@ -2,7 +2,7 @@
 #'
 #' @description Un selector formado por radiobuttons que permite elegir entre media y año  .
 #'
-#' @param id,label,,selected Internal parameters for {shiny}.
+#' @param id,label,selected Internal parameters for {shiny}.
 #'
 #' @noRd
 #'
@@ -11,7 +11,7 @@ mod_mean_year_selector_ui <- function(
   id,
   label,
   selected = NULL,
-  global_option ="Global"
+  global_option = "Global"
 ) {
   ns <- NS(id)
 
@@ -47,7 +47,6 @@ mod_mean_year_selector_ui <- function(
 #' @noRd
 mod_mean_year_selector_server <- function(id) {
   moduleServer(id, function(input, output, session) {
-    
     # On change at select, select its radio-button
     observeEvent(
       input$other,
@@ -61,7 +60,7 @@ mod_mean_year_selector_server <- function(id) {
       ignoreInit = TRUE
     )
 
-    # return 0 or the value of the select 
+    # return 0 or the value of the select
     reactive({
       if (input$primary == "other") {
         input$other
