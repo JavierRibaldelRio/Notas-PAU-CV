@@ -14,7 +14,6 @@
 #' @import ggplot2
 #' @import forcats
 #' @import tidyr
-#' @import stringr
 #' @import patchwork
 #' @import DT
 #' @noRd
