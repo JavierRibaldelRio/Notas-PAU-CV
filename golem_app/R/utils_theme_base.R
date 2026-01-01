@@ -9,7 +9,6 @@ theme_base <- function() {
   theme(
     panel.grid.major = element_line(color = "gray90"),
     panel.grid.minor = element_blank(),
-    panel.border = element_blank(),
     axis.line = element_line(color = "black"),
     axis.ticks = element_line(color = "black"),
     plot.background = element_rect(fill = "white", color = NA),
