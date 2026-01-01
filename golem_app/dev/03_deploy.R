@@ -50,7 +50,7 @@ rsconnect::deployApp(
     # Add any additional files unique to your app here.
     "R/",
     "inst/",
-    "data/",
+    "notas-pau.db",
     "NAMESPACE",
     "DESCRIPTION",
     "app.R"
