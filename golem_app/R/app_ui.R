@@ -11,7 +11,7 @@ app_ui <- function(request) {
     # Leave this function for adding external resources
     golem_add_external_resources(),
     # Main page
-    fillPage(
+    page_fillable(
       theme = bslib::bs_theme(version = 5, bootswatch = "litera"),
 
       # Main UI of the page
