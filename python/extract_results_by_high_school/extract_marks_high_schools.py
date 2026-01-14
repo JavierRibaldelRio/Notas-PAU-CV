@@ -84,6 +84,10 @@ def format_table_2010(table, convo, year):
         i.append(convo)
         i.append(year)
 
+        # Not tried yet, but should work fine
+        i.append((i[6] / i[5]) * 100)
+        i.append((i[8] / i[7]) * 100)
+
     return table
 
 
@@ -188,6 +192,10 @@ def format_table_2015(table, convo, year):
         row.append(convo)
         row.append(year)
 
+        # Not tried yet, but should work fine
+        row.append((row[6] / row[5]) * 100)
+        row.append((row[8] / row[7]) * 100)
+
     return table
 
 # CONVOCATORIAS 2017 -----------------------------------------------
@@ -267,6 +275,10 @@ def format_table_2017_1(table, convo, year):
         row.append(convo)
         row.append(year)
 
+        # Not tried yet, but should work fine
+        row.append((row[6] / row[5]) * 100)
+        row.append((row[8] / row[7]) * 100)
+
         # Annoing exception from center from MUTXAMEL
         if row[4] == 100.0 and row[5] == 7.142 and row[6] == 1.175 and row[7] == 5.523 and row[8] == 0.732:
             row[0] = "03010995"
@@ -289,6 +301,10 @@ def format_table_2017_2(table, convo, year):
 
         row.append(convo)
         row.append(year)
+
+        # Not tried yet, but should work fine
+        row.append((row[6] / row[5]) * 100)
+        row.append((row[8] / row[7]) * 100)
 
     table = [row for row in table if not (pd.isna(row[0]) or row[0] == "" or row[0] == "nan")]
 
@@ -377,6 +393,10 @@ def format_table_2018(table, convo, year):
         # Add convo and year
         row.append(convo)
         row.append(year)
+
+        # Not tried yet, but should work fine
+        row.append((row[6] / row[5]) * 100)
+        row.append((row[8] / row[7]) * 100)
           
 
     # Comprobación final de los datos
@@ -405,6 +425,10 @@ def format_table_2019(table, convo, year):
 
         row.append(convo)
         row.append(year)
+        
+        # Not tried yet, but should work fine
+        row.append((row[6] / row[5]) * 100)
+        row.append((row[8] / row[7]) * 100)
 
     return table
 

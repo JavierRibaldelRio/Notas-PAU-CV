@@ -1,0 +1,23 @@
+/* =========================
+   Ranking subjects table
+   ========================= */
+
+.mod-ranking table.dataTable {
+  font-size: 16px;
+  border: 2px solid #555;
+}
+
+.mod-ranking table.dataTable td,
+.mod-ranking table.dataTable th {
+  vertical-align: middle;
+}
+
+.mod-ranking thead tr:first-child th {
+  text-align: center;
+}
+
+.mod-ranking thead tr:first-child th,
+.mod-ranking thead tr:nth-child(2) th:nth-child(2n),
+.mod-ranking tbody td:nth-child(2n+1) {
+  border-right: 2px solid #999;
+}

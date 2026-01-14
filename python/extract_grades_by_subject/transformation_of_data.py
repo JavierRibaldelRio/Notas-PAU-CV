@@ -50,5 +50,8 @@ def transform_data(data, id_equiv, call_equiv, year, call):
         fila.append(year)
         fila.append(call_equiv[call])
 
+        # Not tested yet, but should be fine
+        fila.append((fila[5] / fila[4]) * 100)
+
     # Return immutable tuple of tuples
     return tuple(tuple(row) for row in data)

@@ -1,0 +1,13 @@
+^renv$
+^renv\.lock$
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.here$
+^notaspaucv/\.Rbuildignore$
+^notaspaucv/\.here$
+^R/_disable_autoload\.R$
+^LICENSE\.md$
+^app\.R$
+^dev$
+^notas-pau\.db$
+^rsconnect$
