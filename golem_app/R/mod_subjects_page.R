@@ -366,7 +366,7 @@ create_heatmap_subjects <- function(input, output, session, pool) {
       ) +
       scale_x_continuous(
         breaks = seq(min(df$year), max(df$year), by = 1),
-        sec.axis = dup_axis()
+        #sec.axis = dup_axis()
       ) +
       scale_y_discrete(expand = expansion(mult = c(0.01, 0.01))) +
       guides(size = "none") +

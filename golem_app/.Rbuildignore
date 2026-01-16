@@ -11,3 +11,4 @@
 ^dev$
 ^notas-pau\.db$
 ^rsconnect$
+^\.rscignore$

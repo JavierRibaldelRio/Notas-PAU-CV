@@ -232,7 +232,7 @@ mod_single_subject_server <- function(id, pool) {
         coord_flip() +
         scale_y_continuous(
           # duplicate axis
-          sec.axis = dup_axis(name = NULL),
+          #sec.axis = dup_axis(name = NULL),
           # remove gap between col and axis
           expand = expansion(mult = c(0, 0.05))
         ) +
