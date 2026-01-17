@@ -42,14 +42,6 @@ CREATE TABLE municipalities(
     FOREIGN KEY(region) REFERENCES regions(id),
     FOREIGN KEY(province) REFERENCES provinces(id)
 );
-CREATE TABLE regions(
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    province INTEGER,
-
-    FOREIGN KEY (province) REFERENCES provinces(id)
-
-);
 CREATE TABLE high_schools(
 
     id INTEGER PRIMARY KEY,
@@ -150,4 +142,12 @@ CREATE TABLE high_school_types_results(
   candidates_both INTEGER,
   fp_candidates_especific INTEGER,
   FOREIGN KEY (type_id) REFERENCES high_school_types(id)
+);
+CREATE TABLE IF NOT EXISTS "regions" (
+	"id"	INTEGER,
+	"name"	TEXT NOT NULL UNIQUE,
+	"province"	INTEGER NOT NULL,
+	"region_code"	INTEGER NOT NULL UNIQUE,
+	PRIMARY KEY("id"),
+	FOREIGN KEY("province") REFERENCES "provinces"("id")
 );
