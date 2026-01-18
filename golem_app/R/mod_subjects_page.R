@@ -52,11 +52,7 @@ subjects_sidebar_ui <- function(ns, last_year) {
     ),
 
     # Call selector
-    selectInput(
-      ns("select_call"),
-      "Convocatoria",
-      list("Ordinaria" = 0, "Extraordinaria" = 1, "Global" = 2)
-    ),
+    mod_select_call_ui(ns("select_call_1")),
 
     #Graph selector
     input_switch(
@@ -150,10 +146,14 @@ mod_subjects_page_server <- function(id, pool) {
 
 # Main bar plot - line plot
 create_line_bar_plot <- function(input, output, session, pool) {
+
+  get_call <- mod_select_call_server("select_call_1")
+
+
   output$subjects_main <- renderPlot({
     # Get all the data of input
     varname <- input$variable
-    call <- input$select_call
+    call <- req(get_call())
     first_year <- input$years[1]
     last_year <- input$years[2]
     subjects_id <- input$select_subject
