@@ -9,12 +9,11 @@
 precompute_data <- function(force = TRUE) {
   message("Precompute data")
 
-
   con <- create_sqlite_con_precompute()
 
   create_region_data(con)
 
-  #on.exit(DBI::dbDisconnect(con), add = TRUE)
+  on.exit(DBI::dbDisconnect(con), add = TRUE)
 }
 
 
@@ -52,6 +51,7 @@ LEFT JOIN high_school_marks
     "
   )
 
+  # Each YEAR
   # summarise fore each data
   summarise_pau_metrics <- function(data) {
     data |>
@@ -59,7 +59,7 @@ LEFT JOIN high_school_marks
         enrolled_total_sum = sum(enrolled_total, na.rm = TRUE), # total students enrolled
         candidates_total_sum = sum(candidates, na.rm = TRUE), # total PAU candidates
         pass_total = sum(pass, na.rm = TRUE), # total students who passed
-        pass_percentatge = pass_total / candidates_total_sum, # overall pass rate (weighted)
+        pass_percentatge = pass_total / candidates_total_sum * 100, # overall pass rate (weighted)
 
         average_bach = sum(average_bach * candidates, na.rm = TRUE) /
           candidates_total_sum, # weighted mean of bach grades
@@ -68,6 +68,8 @@ LEFT JOIN high_school_marks
           na.rm = TRUE
         ) /
           candidates_total_sum,
+
+        diference_average_bach_pau = average_bach - average_compulsory_pau,
 
         .groups = "drop"
       )
@@ -87,6 +89,44 @@ LEFT JOIN high_school_marks
       dplyr::mutate(type_id = as.integer(3))
   )
 
+  # Global of YEARS (year=0)
+
+  summarise_pau_metrics_all <- function(data) {
+    data |>
+      dplyr::summarise(
+        pass_total = sum(pass_total),
+        average_bach = sum(enrolled_total_sum * average_bach) /
+          sum(enrolled_total_sum),
+        average_compulsory_pau = sum(
+          candidates_total_sum * average_compulsory_pau
+        ) /
+          sum(candidates_total_sum),
+
+        enrolled_total_sum = sum(enrolled_total_sum),
+        candidates_total_sum = sum(candidates_total_sum),
+        pass_percentatge = pass_total / candidates_total_sum,
+
+        diference_average_bach_pau = average_bach - average_compulsory_pau,
+        year = as.integer(0),
+        .groups = "drop"
+      )
+  }
+
+  resu <-
+    dplyr::bind_rows(
+      region_data |>
+        dplyr::group_by(name, region_code, type_id, call) |>
+        summarise_pau_metrics_all(),
+
+      region_data |>
+        dplyr::group_by(name, region_code, call) |>
+        summarise_pau_metrics_all() |>
+        dplyr::mutate(type_id = as.integer(3))
+    )
+
+  region_data <- dplyr::bind_rows(region_data, resu)
+
+  
   # stores the data
 
   saveRDS(region_data, file = "inst/app/data/data_region.rds")
