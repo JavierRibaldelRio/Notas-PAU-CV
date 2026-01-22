@@ -2,6 +2,9 @@ venv/
 __pycache__
 .vscode/
 
+# docs
+golem_app/man/*
+
 
 output.txt
 output.csv
