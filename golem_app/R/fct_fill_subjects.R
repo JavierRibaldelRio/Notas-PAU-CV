@@ -23,7 +23,7 @@
 #' @return
 #' This function is called for its side effects and does not return a value.
 #'
-#' @noRd
+#'
 fill_subjects <- function(
   input,
   output,
