@@ -146,9 +146,7 @@ mod_subjects_page_server <- function(id, pool) {
 
 # Main bar plot - line plot
 create_line_bar_plot <- function(input, output, session, pool) {
-
   get_call <- mod_select_call_server("select_call_1")
-
 
   output$subjects_main <- renderPlot({
     # Get all the data of input
