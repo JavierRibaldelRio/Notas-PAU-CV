@@ -41,7 +41,6 @@ mod_single_subject_ui <- function(id) {
             )
           )
         ),
-        br(),
         plotOutput(ns("double_plot"), width = "100%")
       )
     ),
