@@ -12,11 +12,15 @@ theme_base <- function() {
     axis.line = element_line(color = "black"),
     axis.ticks = element_line(color = "black"),
     plot.background = element_rect(fill = "white", color = NA),
+    plot.title = element_text(family = "Lato", size = 20, color = "black"),
+    plot.subtitle = element_text(family = "Lato", size = 14, color ="black"),
     panel.background = element_rect(fill = "white", color = NA),
     panel.grid = element_blank(),
     axis.title = element_text(family = "Lato",size = 16, color="black"), # Títulos ejes
     axis.text = element_text(family = "Lato",size = 13, color="black"), # Texto de ticks
     legend.title = element_text(family = "Lato",size = 15, color="black"), # Título leyenda
-    legend.text = element_text(family = "Lato",size = 14, color="black", ) # Texto leyenda
+    legend.text = element_text(family = "Lato",size = 14, color="black"), # Texto leyenda
+    legend.position = "bottom", 
+    legend.title.position = "top"
   )
 }
