@@ -71,9 +71,6 @@ mod_single_subject_server <- function(id, pool) {
       varnames = c("success", "primary", "info")
     )
 
-    # get primary color for plot
-    primary_hex <- bslib::bs_get_variables(theme, varnames = "primary")
-
     # selector of mean and year
     selected_year <- mod_mean_year_selector_server("mean_year_selector_2")
 
@@ -131,7 +128,8 @@ mod_single_subject_server <- function(id, pool) {
           se = FALSE,
           method = "loess",
           formula = 'y ~ x',
-          color = primary_hex
+          # Set primary color
+          color = bs_cols[2]
         ) +
         coord_cartesian(ylim = y_lims) +
         scale_y_continuous(position = "right") +
@@ -154,8 +152,8 @@ mod_single_subject_server <- function(id, pool) {
       box_plot <- sd |>
         ggplot(aes(x = "", y = !!sym(variable))) +
         coord_cartesian(ylim = y_lims) +
-        geom_boxplot(color = primary_hex) +
-        geom_jitter(alpha = 0.25, color = primary_hex) +
+        geom_boxplot(color = bs_cols[2]) +
+        geom_jitter(alpha = 0.25, color = bs_cols[2]) +
         yLabel +
         theme_base() +
         theme(
