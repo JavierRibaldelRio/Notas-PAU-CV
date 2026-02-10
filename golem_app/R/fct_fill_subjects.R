@@ -11,7 +11,7 @@
 #' @param pool A database connection pool used to query the subjects table.
 #' @param id Character string identifying the `selectizeInput` to update.
 #' @param selected Integer vector of subject IDs to be selected by default.
-#'   Defaults to `c(4, 30)`.
+#'   Defaults to `c(4, 30)` that match Spanish and Valencian subject-id.
 #'
 #' @details
 #' The function queries the `subjects` table for subject IDs and names,
