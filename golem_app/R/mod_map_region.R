@@ -9,46 +9,47 @@
 #' @importFrom shiny NS tagList
 mod_map_region_ui <- function(id) {
   ns <- NS(id)
-  card(
-    layout_sidebar(
-      sidebar = sidebar(
-        title = "Resultados por comarca",
-        width = "40%",
+  navset_card_tab(
+    title = "Resultados por comarca",
+    sidebar = sidebar(
+      width = "40%",
 
-        # enhances responsive plotly 
-        open = "always",
+      # enhances responsive plotly
+      open = "always",
 
-
-        # call selector
-        mod_mean_year_selector_ui(
-          ns("mean_year_selector_2"),
-          label = "Nivel de agregación",
-          global_option = "Media interanual"
-        ),
-
-        layout_columns(
-          widths = c(6, 6), # dos columnas del mismo ancho
-          mod_select_call_ui(ns("select_call_1")),
-          mod_select_high_school_type_ui(ns("select_high_school_type_1"))
-        ),
-
-        hr(),
-
-        radioButtons(
-          inputId = ns("varname"),
-          label = "Variable",
-          choices = list(
-            "Presentados" = "candidates_total_sum",
-            "Aprobados" = "pass_total",
-            "Aprobados (%)" = "pass_percentatge",
-            "Media Bachillerato" = "average_bach",
-            "Media Fase Obligatoria" = "average_compulsory_pau",
-            "Diferencia Media Bach. - Media Pau" = "diference_average_bach_pau"
-          )
-        ),
+      # call selector
+      mod_mean_year_selector_ui(
+        ns("mean_year_selector_2"),
+        label = "Nivel de agregación",
+        global_option = "Media interanual"
       ),
 
-      plotlyOutput(ns("mapa"))
+      layout_columns(
+        widths = c(6, 6), # dos columnas del mismo ancho
+        mod_select_call_ui(ns("select_call_1")),
+        mod_select_high_school_type_ui(ns("select_high_school_type_1"))
+      ),
+
+      hr(),
+
+      radioButtons(
+        inputId = ns("varname"),
+        label = "Variable",
+        choices = list(
+          "Presentados" = "candidates_total_sum",
+          "Aprobados" = "pass_total",
+          "Aprobados (%)" = "pass_percentatge",
+          "Media Bachillerato" = "average_bach",
+          "Media Fase Obligatoria" = "average_compulsory_pau",
+          "Diferencia Media Bach. - Media Pau" = "diference_average_bach_pau"
+        )
+      ),
+    ),
+    nav_panel(
+      "Mapa",
+      class = "p-0",
+        plotlyOutput(ns("mapa"), height = "100%")
+      
     )
   )
 }
@@ -157,7 +158,7 @@ mod_map_region_server <- function(id, pool) {
             frame.linewidth = 0.2,
             ticks.colour = "black",
             barheight = unit(4, "cm"),
-            barwidth  = unit(0.5, "cm")
+            barwidth = unit(0.5, "cm")
           )
         ) +
         theme_base() +
@@ -170,8 +171,6 @@ mod_map_region_server <- function(id, pool) {
           axis.title = element_blank(),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
-
-        
         )
 
       #Plotly
@@ -183,8 +182,7 @@ mod_map_region_server <- function(id, pool) {
           displayModeBar = FALSE,
           doubleClick = FALSE,
           scrollZoom = FALSE,
-          responsive = TRUE         
-
+          responsive = TRUE
         ) |>
         layout(
           dragmode = FALSE,
