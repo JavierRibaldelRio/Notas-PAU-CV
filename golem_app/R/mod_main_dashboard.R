@@ -11,6 +11,7 @@ mod_main_dashboard_ui <- function(id) {
   ns <- NS(id)
   tagList(
     
+    # Summary cards: pass rate, total, average, difference
     layout_columns(
       fill = FALSE,
       card(
@@ -38,6 +39,7 @@ mod_main_dashboard_ui <- function(id) {
         )
       )
     ),    
+    # Main plots section
     layout_columns(
       card(
         full_screen = TRUE,
@@ -45,11 +47,11 @@ mod_main_dashboard_ui <- function(id) {
         card_body(
           plotOutput(outputId = ns("candidates_over_years")),
           hr(),
-          plotOutput(outputId = ns("line_chart_pass_percentage"))
+          plotOutput(outputId = ns("boxplot_diff_avg"))
         )
       ),
       layout_column_wrap(
-          
+        # Tabs: academic performance comparison
         navset_card_tab(
           title = "Rendimiento académico",
           full_screen = TRUE,
@@ -61,8 +63,8 @@ mod_main_dashboard_ui <- function(id) {
             "Variación diferencia",
             plotOutput(outputId = ns("diff_tendence_smooth"))
           )
-        )
-        ,
+        ),
+        # Student profile by phase and origin
         card(
           full_screen = TRUE,
           card_header("Fases y origen"),
@@ -73,6 +75,7 @@ mod_main_dashboard_ui <- function(id) {
         width = 1,
         heights_equal = "row"
       ), 
+      # Demographics: gender distribution
       card(
         full_screen = TRUE,
         card_header("Demografía y género"),
@@ -87,7 +90,7 @@ mod_main_dashboard_ui <- function(id) {
   )     
 }
 
-# Extracts de values for the 4 cards at the top of the page
+# Calculate summary statistics for top cards
 extract_global_averages <- function(output, df) {
 
   summary_df <- df |>
@@ -160,6 +163,49 @@ candidates_over_years_plot <- function(output, df, colors) {
   output$candidates_over_years <- renderPlot(plot)
 }
 
+# Boxplot diferences between averages (PAU, Bach, NAU)
+boxplot_diff_averages <- function(output, df, colors) {
+
+  long_df <- df |> 
+    select(
+      average_nau,
+      average_pau,
+      average_bach
+    ) |> 
+    pivot_longer(
+      cols = everything(),
+      names_to = "type",
+      values_to = "averages"
+    ) |> 
+    mutate(
+      type = case_when(
+        type == "average_pau" ~ "Media PAU",
+        type == "average_bach" ~ "Media Bachillerato",
+        type == "average_nau" ~ "Media NAU"
+      )
+    )
+  
+  plot <- long_df |> 
+    ggplot(aes(x = type, y = averages, color = type)) +
+    geom_boxplot(fill = NA, size = 1, width = 0.5) +
+    scale_color_manual(
+      values = c(
+        "Media PAU" = colors[["primary"]],
+        "Media Bachillerato" = colors[["danger"]],
+        "Media NAU" = colors[["success"]]
+      )
+    ) +
+    labs(
+      title = "Distribución de las Medias",
+      x = "",
+      y = "Nota Media"
+    ) +
+    theme_base() +
+    theme(legend.position = "none")
+
+  output$boxplot_diff_avg <- renderPlot(plot)
+}
+
 # Percentage of candidates that passed over the years
 line_chart_pass_percentage_plot <- function(output, df, colors) {
 
@@ -182,17 +228,23 @@ line_chart_pass_percentage_plot <- function(output, df, colors) {
     )
   
   plot <- long_df |> 
-    ggplot(aes(x = sexo, y = porcentaje, fill = sexo)) +
-    geom_jitter() +
-    coord_cartesian(ylim = c(90, 100)) +
-    labs(
-      title = "Evolución Académica: Porcentage de aprobados",
-      subtitle = "Comparativa anual, por sexos",
-      x = "Año",
-      y = "Porcentage de aprobados",
-      color = "Categoría" 
+    ggplot(aes(x = sexo, y = porcentaje, color = sexo)) +
+    geom_jitter(width = 0.15, alpha = 0.6, color = colors[["secondary"]]) +
+    geom_boxplot(width = 0.35, size = 1,  fill = NA, outlier.shape = NA) +
+    scale_color_manual(values = c("Hombres" = colors[["info"]], "Mujeres" = colors[["warning"]])) +
+    scale_y_continuous(
+      labels = scales::label_number(suffix = "%")
     ) +
-    theme_base()
+    coord_cartesian(ylim = c(93, 99),) +
+    
+    labs(
+      title = "Distribución de Aprobados: Hombres vs Mujeres",
+      subtitle = "Cada punto representa un año académico",
+      x = "",
+      y = "Porcentaje de aprobados"
+    ) +
+    theme_base() +
+    theme(legend.position = "none")
 
   output$line_chart_pass_percentage <- renderPlot(plot)
 }
@@ -421,6 +473,9 @@ mod_main_dashboard_server <- function(id, pool){
 
     # Evolution over the years in terms of enrolled, candidates and pass
     candidates_over_years_plot(output, df, colors)
+
+    # Difference between values of different averages
+    boxplot_diff_averages(output, df, colors)
 
     # Evolution over the years in terms of pass percentage
     line_chart_pass_percentage_plot(output, df, colors)
