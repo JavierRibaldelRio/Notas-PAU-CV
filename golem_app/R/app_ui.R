@@ -26,6 +26,14 @@ app_ui <- function(request) {
           underline = TRUE
         ),
 
+        # Main page (dashboard)
+        nav_panel(
+          value="home",
+          "Inicio",
+
+          mod_main_dashboard_ui("main_dashboard_1")
+        ),
+
         # Page 1 subjects
         nav_panel(
           value="subjects",
