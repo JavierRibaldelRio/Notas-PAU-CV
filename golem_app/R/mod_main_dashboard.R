@@ -10,113 +10,60 @@
 mod_main_dashboard_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    
-    # Summary cards: pass rate, total, average, difference
-    layout_columns(
-      fill = FALSE,
-      card(
-        card_header("Tasa de Aprobado Global"),
-        card_body(
-          textOutput(outputId = ns("pass_percentage_1"))
-        )
-      ),
-      card(
-        card_header("Total de Presentados"),
-        card_body(
-          textOutput(outputId = ns("candidates_1"))
-        )
-      ),
-      card(
-        card_header("Nota Media"),
-        card_body(
-          textOutput(outputId = ns("final_average_pass_1"))
-        )
-      ),
-      card(
-        card_header("Diferencia Notas (PAU vs. Bachillerato)"),
-        card_body(
-          textOutput(outputId = ns("diff_bach_pau_1"))
-        )
-      )
-    ),    
+   
     # Main plots section
     layout_columns(
-      card(
-        full_screen = TRUE,
-        card_header("Tendencias"),
-        card_body(
-          plotOutput(outputId = ns("candidates_over_years")),
-          hr(),
-          plotOutput(outputId = ns("boxplot_diff_avg"))
-        )
-      ),
       layout_column_wrap(
-        # Tabs: academic performance comparison
+
         navset_card_tab(
           title = "Rendimiento académico",
           full_screen = TRUE,
+
           nav_panel(
-            "Diferencia PAU vs. Bach",
-            plotOutput(outputId = ns("diff_average_bach_pau")) 
+            "Distribución de las medias",
+            plotOutput(outputId = ns("boxplot_diff_avg"))
+          ),
+          nav_panel(
+           "Diferencia PAU vs. Bach.",
+           plotOutput(outputId = ns("diff_average_bach_pau")) 
           ),
           nav_panel(
             "Variación diferencia",
             plotOutput(outputId = ns("diff_tendence_smooth"))
           )
         ),
-        # Student profile by phase and origin
-        card(
-          full_screen = TRUE,
-          card_header("Fases y origen"),
-          card_body(
-            plotOutput(outputId = ns("student_profile"))
+        layout_columns(
+          navset_card_tab(
+            title="Evolución y perfil",
+            full_screen = TRUE,
+            nav_panel(
+              "Evo. académica",
+              plotOutput(outputId = ns("candidates_over_years"))
+            ),
+            nav_panel(
+              "Perfil del Presentado",
+              plotOutput(outputId = ns("student_profile"))
+            )
+          ),
+          navset_card_tab(
+            title = "Estadísticas por sexos",
+            full_screen = TRUE,
+            nav_panel(
+              "Presentad@s",
+              plotOutput(outputId = ns("stacked_area_chart"))
+            ),
+            nav_panel(
+              "Aprobad@s",
+              plotOutput(outputId = ns("line_chart_pass_percentage"))
+            )
           )
         ),
         width = 1,
         heights_equal = "row"
-      ), 
-      # Demographics: gender distribution
-      card(
-        full_screen = TRUE,
-        card_header("Demografía y género"),
-        card_body(
-          plotOutput(outputId = ns("stacked_area_chart")),
-          hr(),
-          plotOutput(outputId = ns("line_chart_pass_percentage"))
-        )
-      )
+      ),
+      card()
     )
-    
   )     
-}
-
-# Calculate summary statistics for top cards
-extract_global_averages <- function(output, df) {
-
-  summary_df <- df |>
-    summarise(
-      total_candidates = sum(candidates, na.rm = TRUE),
-      pass_percentage = sum(pass_percentage * candidates, na.rm = TRUE),
-      real_pass_percentage = pass_percentage / total_candidates,
-      diff_bach_pau = sum((average_bach - average_pau) * candidates, na.rm = TRUE),
-      real_diff_bach_pau = diff_bach_pau / total_candidates,
-      total_average_pondered = sum(final_average_pass * candidates, na.rm = TRUE),
-      final_average_pass = total_average_pondered / total_candidates
-    )
-
-  output$pass_percentage_1 <- renderText({
-    paste0(format(floor(summary_df$real_pass_percentage * 100) / 100, decimal.mark = ","), "%")
-  })
-
-  output$candidates_1 <- renderText({format(summary_df$total_candidates, big.mark = ".", decimal.mark = ",")})
-
-  output$final_average_pass_1 <- renderText({
-    format(floor(summary_df$final_average_pass * 100) / 100, nsmall = 2, decimal.mark = ",")
-  })
-
-  output$diff_bach_pau_1 <- renderText({
-    format(floor(summary_df$real_diff_bach_pau * 100) / 100, nsmall = 2, decimal.mark = ",")
-  })
 }
 
 # Grouped bar plot relation between enrolled, candidates and pass over the years
@@ -150,14 +97,16 @@ candidates_over_years_plot <- function(output, df, colors) {
     ) +
     coord_cartesian(ylim = c(15000, NA)) +
     labs(
-      title = "Evolución Académica: Aprobados y Suspendidos",
+      title = "Aprobados y Suspendidos",
       subtitle = "Comparativa anual",
       x = "Año",
       y = "Número de estudiantes"
     ) + 
     theme_base() + 
     theme(
-      legend.title = element_blank()
+      legend.title = element_blank(),
+      # No collapse in compact view
+      axis.text.x = element_text(angle = 45, hjust = 1)
     )
   
   output$candidates_over_years <- renderPlot(plot)
@@ -229,7 +178,7 @@ line_chart_pass_percentage_plot <- function(output, df, colors) {
   
   plot <- long_df |> 
     ggplot(aes(x = sexo, y = porcentaje, color = sexo)) +
-    geom_jitter(width = 0.15, alpha = 0.6, color = colors[["secondary"]]) +
+    geom_jitter(width = 0.15, alpha = 0.6) +
     geom_boxplot(width = 0.35, size = 1,  fill = NA, outlier.shape = NA) +
     scale_color_manual(values = c("Hombres" = colors[["info"]], "Mujeres" = colors[["warning"]])) +
     scale_y_continuous(
@@ -238,8 +187,7 @@ line_chart_pass_percentage_plot <- function(output, df, colors) {
     coord_cartesian(ylim = c(93, 99),) +
     
     labs(
-      title = "Distribución de Aprobados: Hombres vs Mujeres",
-      subtitle = "Cada punto representa un año académico",
+      title = "Distribución de Aprobados",
       x = "",
       y = "Porcentaje de aprobados"
     ) +
@@ -299,6 +247,7 @@ diff_average_dumbell_chart <- function(output, df, colors) {
   output$diff_average_bach_pau <- renderPlot(plot)
 }
 
+# Tendency of the variation of the means
 diff_tendence <- function(output, df, colors) {
   
   new_df <- df |> 
@@ -330,7 +279,8 @@ diff_tendence <- function(output, df, colors) {
     ) +
     labs(
       x = "Año",
-      y = "Diferencia PAU - Bachillerato"
+      y = "Diferencia PAU - Bachillerato",
+      title = "Variación de la diferencia entre las medias de Bachillerato y PAU"
     ) +
     theme_base()
 
@@ -369,7 +319,7 @@ student_profile_chart <- function(output, df, colors) {
     mutate(
       fase = "Fase Específica",
       tipo_alumno = case_when(
-        names == "fp_candidates_especific" ~ "Vienen de FP",
+        names == "fp_candidates_especific" ~ "FP",
         TRUE ~ "Solo específica"
       )
     )
@@ -378,7 +328,7 @@ student_profile_chart <- function(output, df, colors) {
     mutate(
       tipo_alumno = factor(
         tipo_alumno,
-        levels = c("Ambas fases", "Solo general", "Solo específica", "Vienen de FP")
+        levels = c("Ambas fases", "Solo general", "Solo específica", "FP")
       )
     )
   
@@ -390,7 +340,7 @@ student_profile_chart <- function(output, df, colors) {
       values = c(
         "Solo general" = colors[["primary"]],
         "Solo específica" = colors[["danger"]],
-        "Vienen de FP" = colors[["success"]]
+        "FP" = colors[["success"]]
       )
     ) +
     scale_y_continuous(
@@ -398,17 +348,20 @@ student_profile_chart <- function(output, df, colors) {
     ) +
     labs(
       title = "Perfil del Candidato",
-      subtitle = "Todos aquellos que no realizan las dos fases",
       x = "Año",
       y = "Número de alumnos",
       color = "Origen del alumno"
     ) +
-    theme_base()
+    theme_base() +
+    theme(
+      # No collapse in compact view
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
 
   output$student_profile <- renderPlot(plot)
 }
 
-#Stacked area chart to visualize the gap between male and female candidates
+# Stacked area chart to visualize the gap between male and female candidates
 stacked_area_chart_candidates <- function(output, df, colors) {
   
   plot <- df |> 
@@ -432,12 +385,16 @@ stacked_area_chart_candidates <- function(output, df, colors) {
       labels = c("Hombres", "Mujeres")
     ) +
     labs(
-      title = "Evolución de candidatos por género",
+      title = "Evolución de presentados por sexo",
       x = "Año",
       y = "Número de estudiantes",
-      fill = "Género"
+      fill = "Sexo"
     ) +
-    theme_base()
+    theme_base() +
+    theme(
+      # No collapse in compact view
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
 
   output$stacked_area_chart <- renderPlot(plot)
 }
@@ -467,27 +424,25 @@ mod_main_dashboard_server <- function(id, pool){
       varnames = c("primary", "secondary", "success", "danger",  "warning", "info", "dark", "default")
     )
 
-
-    # Global averages funtion
-    extract_global_averages(output, df)
-
-    # Evolution over the years in terms of enrolled, candidates and pass
+    # Plot: Evolution over the years in terms of enrolled, candidates and pass
     candidates_over_years_plot(output, df, colors)
 
-    # Difference between values of different averages
+    # Plot: Difference between values of different averages
     boxplot_diff_averages(output, df, colors)
 
-    # Evolution over the years in terms of pass percentage
+    # Plot: Evolution over the years in terms of pass percentage
     line_chart_pass_percentage_plot(output, df, colors)
   
-    # Academic performance based on the visual diference between average_bach and average_pau
+    # Plot: Academic performance based on the visual diference between average_bach and average_pau
     diff_average_dumbell_chart(output, df, colors)
 
+    # Plot: Smooth of the variation of difference between means
     diff_tendence(output, df, colors)
 
-    # Candidates profile
+    # Plot: Candidates profile
     student_profile_chart(output, df, colors)
 
+    # Plot: Male and female candidates over the years
     stacked_area_chart_candidates(output, df, colors)
   })
 }
