@@ -1,0 +1,255 @@
+---
+title: "Regresión Notas PAU"
+author:
+  - name: Javier Ribal del Río
+  - name: Pau Minguet Micó
+---
+
+
+Cargar librerías
+```{r}
+library(tidyverse)
+library(DBI)
+library(broom)
+```
+
+Cargar base de datos
+```{r}
+create_sqlite_con_precompute <- function(
+  db_path = "data/notas-pau.db",
+  flags = RSQLite::SQLITE_RO,
+  pragmas = c(
+    journal_mode = "WAL",
+    busy_timeout = 5000,
+    synchronous = "NORMAL",
+    cache_size = 10000
+  )
+) {
+  con <- DBI::dbConnect(
+    drv = RSQLite::SQLite(),
+    dbname = db_path,
+    flags = flags
+  )
+
+  for (i in seq_along(pragmas)) {
+    key <- names(pragmas)[i]
+    val <- pragmas[[i]]
+    stmt <- sprintf(
+      "PRAGMA %s = %s;",
+      key,
+      if (is.character(val)) val else as.character(val)
+    )
+    try(DBI::dbExecute(con, stmt), silent = TRUE)
+  }
+
+  con
+}
+
+
+con <- create_sqlite_con_precompute()
+```
+
+
+Para cada centro educativo disponemos de 
+
+- Código postal, `postal_code`
+- Datos de ubicación
+- Régimen (público, concertado o privado)
+- Otros datos que no afectan a la variable explicativa como la dirección, o el email del centro...
+
+
+Para cada año dispontemos de cada centro las siguientes observaciones
+
+- Variable identificativas
+  - Año
+  - Convocatoria (ordinaria, global y extraordinaria)
+
+- Variables
+  - Matriculados
+  - Presentados
+  - Aprobados
+  - Nota media de Bachillerato
+  - Desviación típica de la nota Bachillerato
+
+
+La variable a predecir es: la nota media de la fase obligatoria de la PAU por centro
+
+$$\mathrm{PAU_it} = \beta_0 + \beta_1\mathrm{Bach_{it}} + \epsilon_{it} $$
+```{r}
+# realizar la regresión
+data1 <- dbGetQuery(
+  con,
+  "SELECT * FROM high_school_marks JOIN high_schools ON  high_school_marks.high_school_id = high_schools.id  WHERE call = 2"
+)
+
+data1 <- data1[, !duplicated(names(data1))]
+
+modelo_1 <- data1 |>
+  lm(average_compulsory_pau ~ average_bach, data = _)
+
+summary(modelo_1) # visualización con R
+
+tidy(modelo_1)
+glance(modelo_1)
+```
+
+1. El coeficiente de `average_bach` es de 0.79663 lo que quiere decir que si la media de bachillerato aumenta 1 punto la nota de la pau lo hace solo en el coeficiente previo
+2. R-squared: 0.3909, no se acerca a 1 por lo que podría ser un modelo mejorable
+3. Mirando el p-valor es inferior a 0.005 por lo que, como era esperable es estadísticamente significativo.
+
+
+```{r}
+data1|>
+  ggplot(aes(y=average_compulsory_pau, x=average_bach)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_bw()
+
+```
+
+
+## Modelo 2
+
+$$\mathrm{PAU_it} = \beta_0 + \beta_1\mathrm{Bach-mean_{it}} + \beta_2\mathrm{Bach-sd_{it}}+ \epsilon_{it} $$
+
+
+Incorporamos la desviación de la nota media de bachillerato a nuestra regresión
+
+```{r}
+modelo_2 <- data1 |>
+  lm(average_compulsory_pau ~ average_bach + standard_dev_bach, data = _)
+
+tidy(modelo_2)
+glance(modelo_2)
+```
+
+1. El valor de $\beta_2 = 0.228$
+2. $R^2$ aumenta en 0.005 (=0.395)
+
+
+**ChatGPT** destaca el hecho de que sea positivo, porque el esperaba que fuese negativo
+
+
+### Modelo 3
+
+Incorporamos el factor de régimen. Lo introducimos como *variables binarias* es decir dos variable y hacer combinaciones. Por ejemplo, 00 → público, 01 → privado, 10 → concertado
+
+```{r}
+
+modelo_3 <-  data1 |>
+  mutate(regime = as.factor(type_id)) |> 
+    lm(average_compulsory_pau ~ average_bach + standard_dev_bach + regime, data = _)
+tidy(modelo_3)
+glance(modelo_3)
+
+```
+
+
+1. Aparecen dos nuevos p-valor para regimen 1 y 2, los dos son significactivos, aunque el segundo en menor medida que el primero
+2. La R^2 no aumenta casi solo en 0.001
+
+> El régimen del centro está asociado de forma estadísticamente significativa con la nota media de la PAU, una vez controladas la media y la dispersión de bachillerato. Sin embargo, su contribución adicional al poder explicativo global del modelo es reducida.
+
+
+## Matriz de correlación de algunas de las variables
+
+
+```{r}
+
+data1 |> 
+  select(
+    average_compulsory_pau,
+    average_bach,
+    standard_dev_bach,
+    enrolled_total,
+    candidates,
+    pass
+  ) |>
+  cor(use ="complete.obs")
+
+```
+
+
+A pesar de que candidatos no presenta mucha relación con average_compulsory_pau la podemos introducir en el model para ver si es estadísticamente 
+
+
+## Modelo 4
+
+Introducimos los candidatos
+```{r}
+modelo_4 <- data1 |> 
+  mutate(regime = as.factor(type_id)) |> 
+  lm(
+    average_compulsory_pau ~ average_bach + standard_dev_bach + regime + candidates,
+    data = _
+  )
+
+tidy(modelo_4)
+glance(modelo_4)
+```
+
+Los candidatos son ahora la segunda variable más significativa solo por detrás de la media de bachillerato
+
+El valor de $R^2$ asciende hasta 0.399
+
+
+### Modelo 4 Estandarizado
+
+```{r}
+modelo_4_std <- data1 |> 
+  mutate(regime = as.factor(type_id)) |> 
+  select(average_compulsory_pau, average_bach, standard_dev_bach, regime, candidates) |> 
+  drop_na() |> 
+  mutate(
+    average_compulsory_pau = as.numeric(scale(average_compulsory_pau)),
+    average_bach = as.numeric(scale(average_bach)),
+    standard_dev_bach = as.numeric(scale(standard_dev_bach)),
+    candidates = as.numeric(scale(candidates))
+  ) |> 
+  lm(
+    average_compulsory_pau ~ average_bach + standard_dev_bach + regime + candidates,
+    data = _
+  )
+
+tidy(modelo_4_std)
+
+```
+
+
+## Modelo 5
+
+
+
+```{r}
+modelo_5 <- data1 |>
+  mutate(regime = as.factor(type_id)) |>
+  lm(
+    average_compulsory_pau ~ average_bach + I(average_bach^2) +
+      standard_dev_bach + regime + candidates,
+    data = _
+  )
+
+tidy(modelo_5)
+glance(modelo_5)
+```
+
+
+## Modelo 6
+
+Introducimos el factor year
+
+
+```{r}
+modelo_6 <- data1 |> 
+  mutate(
+    regime = as.factor(type_id),
+    year = as.factor(year),
+    center = as.factor(high_school_id))|> 
+  lm(
+    average_compulsory_pau ~ average_bach + standard_dev_bach + regime + candidates + year + center,
+    data = _
+  )
+
+tidy(modelo_6,)
+glance(modelo_6)
+```
