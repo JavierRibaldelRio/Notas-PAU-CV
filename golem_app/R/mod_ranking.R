@@ -27,17 +27,9 @@ mod_ranking_ui <- function(id) {
       )
     ),
     
- 
-      
-
-      
-     
-        DTOutput(ns("ranking_subjects_dt"))
-     
-
-    
+    DTOutput(ns("ranking_subjects_dt"))
   )
- 
+
 }
 
 # Transform data

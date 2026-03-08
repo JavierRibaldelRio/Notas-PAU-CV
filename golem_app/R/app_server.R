@@ -37,7 +37,7 @@ app_server <- function(input, output, session) {
     updateQueryString(newURL, mode = "replace", session)
   })
 
-
+  # Changes the URL adding the current page
   observe({
     currentTab <- sub("#", "", session$clientData$url_hash) # might need to wrap this with `utils::URLdecode` if hash contains encoded characters (not the case here)
     if(!is.null(currentTab)){
@@ -47,5 +47,6 @@ app_server <- function(input, output, session) {
 
   pool <- golem::get_golem_options("pool")
 
+  mod_main_dashboard_server("main_dashboard_1", pool)
   mod_subjects_page_server("subjects_page_1", pool)
 }
