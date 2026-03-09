@@ -1,6 +1,5 @@
 # Sass code compilation
-sass::sass(input = sass::sass_file("inst/app/www/custom.sass"), output = "inst/app/www/custom.css", cache = NULL)
-
+sass::sass(input = sass::sass_file("inst/app/www/main.sass"), output = "inst/app/www/main.css", cache = NULL)
 # Sass code compilation
 sass::sass(input = sass::sass_file("inst/app/www/custom.sass"), output = "inst/app/www/custom.css", cache = NULL)
 

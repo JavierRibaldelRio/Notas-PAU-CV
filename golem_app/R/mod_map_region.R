@@ -11,6 +11,8 @@ mod_map_region_ui <- function(id) {
   ns <- NS(id)
   navset_card_tab(
     title = "Resultados por comarca",
+
+    # Sidebar
     sidebar = sidebar(
       width = "40%",
 
@@ -48,8 +50,12 @@ mod_map_region_ui <- function(id) {
     nav_panel(
       "Mapa",
       class = "p-0",
-        plotlyOutput(ns("mapa"), height = "100%")
-      
+      plotlyOutput(ns("mapa"), height = "100%")
+    ),
+
+    nav_panel(
+      "Tabla",
+      DTOutput(ns("comarcas_table"))
     )
   )
 }
@@ -61,6 +67,17 @@ legend_titles <- c(
   average_bach = "Media Bachillerato",
   average_compulsory_pau = "Media Fase Obligatoria",
   diference_average_bach_pau = "Dif. Media Bach.\n – Media PAU"
+)
+
+
+# read data
+data_region <- readRDS("inst/app/data/data_region.rds") |>
+  mutate(region_code = as.character(region_code)) # transform region code to character to make possible the join
+
+# open map
+regiones_sf <- st_read(
+  "inst/app/www/maps/map-cv-comarcas-simple.gpkg",
+  quiet = TRUE
 )
 
 
@@ -82,35 +99,16 @@ mod_map_region_server <- function(id, pool) {
     get_call <- mod_select_call_server("select_call_1")
     get_type <- mod_select_high_school_type_server("select_high_school_type_1")
 
-    # read data
-    data_region <- readRDS("inst/app/data/data_region.rds") |>
-      mutate(region_code = as.character(region_code)) # transform region code to character to make possible the join
+    # Reactive selected_data use by table and map
+    selected_data <- reactive({
+      req(get_call(), selector_year(), get_type())
 
-    # open map
-    regiones_sf <- st_read(
-      "inst/app/www/maps/map-cv-comarcas-simple.gpkg",
-      quiet = TRUE
-    )
-
-    # generate the map
-    output$mapa <- renderPlotly({
-      # get reactive props
-      selected_call <- req(get_call())
-      selected_year <- req(selector_year())
-      selected_type_id <- req(get_type())
-
-      # varname
-      legend_title <- legend_titles[[input$varname]]
-
-      # prepare data
-      selected_data <- data_region |>
+      data_region |>
         filter(
-          call == selected_call &
-            year == selected_year &
-            type_id == selected_type_id
+          call == get_call() &
+            year == selector_year() &
+            type_id == get_type()
         ) |>
-
-        # generate tooltips
         mutate(
           tooltip = paste0(
             "<b>",
@@ -134,11 +132,17 @@ mod_map_region_server <- function(id, pool) {
             round(diference_average_bach_pau, 2)
           )
         )
+    })
 
+    # generate the map
+    output$mapa <- renderPlotly({
+      # get selected data
+      current_data <- selected_data()
+      legend_title <- legend_titles[[input$varname]]
       # join, must be done every time to avoid removing calls with no data
       filtered_mapa_data <- left_join(
         regiones_sf,
-        selected_data,
+        current_data,
         by = c("cod_comarc" = "region_code")
       )
 
@@ -187,6 +191,59 @@ mod_map_region_server <- function(id, pool) {
         layout(
           dragmode = FALSE,
           autosize = TRUE
+        )
+    })
+
+    # generate data table data
+
+    output$comarcas_table <- renderDT({
+      # get selected data
+      current_data <- selected_data()
+
+      filtered_current_data <- current_data |>
+        mutate(pass_percentatge = 100* pass_percentatge  ) |> 
+        select(name, !!sym(input$varname)) |>
+        arrange(desc(!!sym(input$varname)) )
+
+      # name
+      legend_title <- legend_titles[[input$varname]]
+
+      # Custom header
+      sketch <- withTags(table(
+        class = 'display cell-border compact',
+        thead(
+          tr(
+            th('Comarca'),
+            th(legend_title),
+          )
+        )
+      ))
+
+      # table
+      datatable(
+        filtered_current_data,
+        filter = list("none"),
+        rownames = FALSE,
+        container = sketch,
+
+        # allow only to select one row
+        selection = "single",
+        options = list(
+          pageLength = 40, # there are 30 regions
+          lengthChange = FALSE, # hide "Show n entries"
+          dom = "tl",
+
+          # css to first column
+          columnDefs = list(
+            list(className = 'comarca-name', targets = 0)
+          )
+        )
+      ) |>
+        # Change ',' by '.' and vice versa, and specific decimal digits
+        formatRound(
+          columns = c(2),
+          dec.mark = ",",
+          mark = "."
         )
     })
   })
