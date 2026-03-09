@@ -36,28 +36,31 @@ app_ui <- function(request) {
 
         # Page 1 subjects
         nav_panel(
-          value="subjects",
+          value = "subjects",
           "Asignaturas",
-          
+
           mod_subjects_page_ui("subjects_page_1", 2024)
         ),
 
-        # # Menu of regions
-        # nav_menu(
-        #   "Regiones",
-        #   nav_panel(
-        #     "Provincia",
-        #     "1"
-        #   ),
-        #   nav_panel(
-        #     "Comarca",
-        #     "ASDF"
-        #   ),
-        #   nav_panel(
-        #     "Municipio",
-        #     "ASDF - Desde UI"
-        #   )
-        # ),
+        # Menu of regions
+        nav_menu(
+          "Regiones",
+          nav_panel(
+            "Provincia",
+            value = "regions-provincia",
+            "ahsdfasdf"
+          ),
+          nav_panel(
+            "Comarca",
+            value = "regions-comarca",
+            mod_map_region_ui("map_region_1")
+          ),
+          nav_panel(
+            "Municipio",
+            value = "regions-municipio",
+            "ASDF - Desde UI"
+          )
+        ),
 
         # # Menu of centers
         # nav_menu(
@@ -73,7 +76,7 @@ app_ui <- function(request) {
         # ),
 
         # About us
-        nav_panel("Sobre nosotros",value="about" ,"Pau y Javier"),
+        nav_panel("Sobre nosotros", value = "about", "Pau y Javier"),
       )
     )
   )

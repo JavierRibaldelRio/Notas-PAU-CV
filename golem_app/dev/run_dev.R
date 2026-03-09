@@ -1,8 +1,11 @@
 # Sass code compilation
-sass::sass(input = sass::sass_file("inst/app/www/custom.sass"), output = "inst/app/www/custom.css", cache = NULL)
-
+sass::sass(input = sass::sass_file("inst/app/www/main.sass"), output = "inst/app/www/main.css", cache = NULL)
 # Sass code compilation
 sass::sass(input = sass::sass_file("inst/app/www/custom.sass"), output = "inst/app/www/custom.css", cache = NULL)
+
+# Precompute data
+source("R/fct_precompute_data.R")
+precompute_data()
 
 # Set options here
 options(golem.app.prod = FALSE) # TRUE = production mode, FALSE = development mode
