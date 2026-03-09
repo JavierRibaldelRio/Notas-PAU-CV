@@ -11,6 +11,8 @@ Cargar librerías
 library(tidyverse)
 library(DBI)
 library(broom)
+library(lmtest)
+library(sandwich)
 ```
 
 Cargar base de datos
@@ -253,3 +255,57 @@ modelo_6 <- data1 |>
 tidy(modelo_6,)
 glance(modelo_6)
 ```
+
+## Comprobaciones
+
+Para hacer todas las comprobaciones ahora nos centraremos en el `modelo_4`.
+Primero vamos a hacer unos gráficos de diagnóstico.
+
+```{r}
+par(mfrow = c(2, 2))
+plot(modelo_4)
+```
+
+### Análisis de los gráficos
+
+1. **Residual vs Fitted**
+
+En este gráfico podemos observar que la nube de puntos está bastante concentrada alrededor del 0. No se aprecia una curvatura clara, pero sí parece haber una ligera forma de banda y algo más de dispersión en algunas zonas.
+
+Todo esto sugiere que la relación lineal no parece completamente absurda, es decir, no hay una señal clasísima de que el modelo esté mal por la no linealidad.
+
+2. **Q-Q Residuals**
+
+En este gráfico podemos observar que los puntos situados a la izquierda no siguen la diagonal, es decir, parece haber una desviación fuerte en los residuos más pequeños. 
+
+Mediante estas observaciones, tenemos indicios de que los residuos no siguen una distribución normal de forma estricta.
+
+3. **Scale-Location**
+
+Podemos observar, que en este gráfico la nube no es perfectamente horizontal, y se aprecia cierta variación en la aplitud de los residuos. Los casos más extremos vuelven a aparecer arriba.
+
+Hay indicios leves heterocedasticidad, suficiente como para no dar por hecho que la varianza es constante.
+
+4. **Residuals vs Leverage**
+
+Observamos que la mayoría de observaciones tienen leverage bajo (acumulados a la izquierda) y hay unos pocos a la derecha con un leverage un poco más alto.
+
+Esto sugiere que ciertos centros podían estar condicionando parcialmente la estimación del modelo y convendía revisar su impacto.
+
+### Evidencia visual
+
+Para contrastar las observaciones 
+
+```{r}
+# Comprobar la homocedasticidad
+bptest(modelo_4)
+coeftest(modelo_4, vcov = vcovHC(modelo_4, type="HC1"))
+```
+
+El contraste de Breusch-Pagan muestra que la varianza de los errores no puede considerarse constate. Por tanto, el supuesto de homocedasticidad del modelo lineal clásico no se cumple.
+
+La presencia de heterocedasticidad implica que los errores estándar clásicos del modelo lineal pueden no ser adecuados, afectando a la validez de los contrastes de significatividad habituales. Por esta razón, recalculamos los errores estándar mediante el estimador robusto HC1.
+
+Tras esta corrección, todas las variables incluidas en el modelo continúan siendo estadísticamente significativas. En particular, la nota media de Bachillerato del centro sigue siendo la variable con mayor capacidad explicativa, con un coeficiente estimado de 0.773. Asimismo, la desviación típica de Bachillerato, el régimen del centro y el número de candidatos mantienen una asociación estadísticamente significativa con la nota media de la fase obligatoria de la PAU.
+
+No podemos asumir que los residuos sigan una distribución normal estrícta dadas las claras desviaciones en el gráfico Q-Q anterior. Si la muestra hubiera sido menor, hubieramos utilizado el test de Shapiro-Wilk (`shapiro.test`), pero en R tiene un límite de muestra de 5000.
