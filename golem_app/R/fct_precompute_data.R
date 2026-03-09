@@ -35,7 +35,7 @@ create_region_data <- function(con) {
     average_bach ,
     standard_dev_bach ,
     average_compulsory_pau ,
-    standard_dev_pau ,
+    standard_dev_pau,
     diference_average_bach_pau , 
 	coeff_variation_bach, 
 	coeff_variation_pau
@@ -113,16 +113,19 @@ LEFT JOIN high_school_marks
   }
 
   resu <-
-    dplyr::bind_rows(
-      region_data |>
-        dplyr::group_by(name, region_code, type_id, call) |>
-        summarise_pau_metrics_all(),
+  dplyr::bind_rows(
+    
+    region_data |>
+      dplyr::filter(type_id != 3) |>
+      dplyr::group_by(name, region_code, type_id, call) |>
+      summarise_pau_metrics_all(),
 
-      region_data |>
-        dplyr::group_by(name, region_code, call) |>
-        summarise_pau_metrics_all() |>
-        dplyr::mutate(type_id = as.integer(3))
-    )
+    region_data |>
+      dplyr::filter(type_id != 3) |>
+      dplyr::group_by(name, region_code, call) |>
+      summarise_pau_metrics_all() |>
+      dplyr::mutate(type_id = as.integer(3))
+  )
 
   region_data <- dplyr::bind_rows(region_data, resu)
 
