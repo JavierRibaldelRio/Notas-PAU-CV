@@ -62,6 +62,12 @@ app_ui <- function(request) {
           )
         ),
 
+        nav_panel(
+          "Centros",
+          value="centros",
+          uiOutput("center_page")
+        ),
+
         # # Menu of centers
         # nav_menu(
         #   "Centros",
