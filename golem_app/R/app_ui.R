@@ -48,7 +48,7 @@ app_ui <- function(request) {
           nav_panel(
             "Provincia",
             value = "regions-provincia",
-            "ahsdfasdf"
+            "WIP"
           ),
           nav_panel(
             "Comarca",
@@ -58,7 +58,7 @@ app_ui <- function(request) {
           nav_panel(
             "Municipio",
             value = "regions-municipio",
-            "ASDF - Desde UI"
+            "WIP"
           )
         ),
 
@@ -76,7 +76,15 @@ app_ui <- function(request) {
         # ),
 
         # About us
-        nav_panel("Sobre nosotros", value = "about", "Pau y Javier"),
+        nav_panel("Sobre nosotros", value = "about",
+        tagList(
+          tags$ul(
+            tags$li("Javier Ribal del Río"),
+            tags$li("Pau Minguet Micó")
+          ),
+          tags$strong("Doble grado en Administración y Dirección de Empresas e Ingeniería Informática"),
+          tags$p("Universitat Politècnica de València")
+        )),
       )
     )
   )
