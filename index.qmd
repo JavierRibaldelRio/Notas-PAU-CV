@@ -597,3 +597,82 @@ La presencia de heterocedasticidad implica que los errores estándar clásicos d
 Tras esta corrección, todas las variables incluidas en el modelo continúan siendo estadísticamente significativas. En particular, la nota media de Bachillerato del centro sigue siendo la variable con mayor capacidad explicativa, con un coeficiente estimado de 0.773. Asimismo, la desviación típica de Bachillerato, el régimen del centro y el número de candidatos mantienen una asociación estadísticamente significativa con la nota media de la fase obligatoria de la PAU.
 
 No podemos asumir que los residuos sigan una distribución normal estrícta dadas las claras desviaciones en el gráfico Q-Q anterior. Si la muestra hubiera sido menor, hubieramos utilizado el test de Shapiro-Wilk (`shapiro.test`), pero en R tiene un límite de muestra de 5000.
+
+## Clustering
+
+```{r}
+marks <- dbGetQuery(
+  con,
+  "SELECT * FROM marks JOIN subjects ON subject_id = subjects.id"
+)
+
+dbDisconnect(con)
+
+# preapare data to cluster
+clustering_base <- marks |>
+  select(-id) |>
+  filter(call == 2) |>
+  group_by(name) |>
+  summarise(
+    candidates_total = sum(candidates, na.rm = TRUE),
+    candidates_total_log = log(candidates_total),
+    pass_total = sum(pass, na.rm = TRUE),
+    pass_rate_global = pass_total / candidates_total,
+    avg_sd_time = sd(average, na.rm = TRUE), # Desviación estándar de la media
+    avg_global_weighted = sum(average * candidates, na.rm = TRUE) /
+      candidates_total,
+    optional_share = sum(candidates_optional, na.rm = TRUE) / candidates_total,
+    average = mean(average),
+    n_years = n(),
+
+    .groups = "drop"
+  ) |>
+  filter(n_years > 1)
+
+# data to do the clustering
+clustering_matrix <- clustering_base |>
+  select(
+    candidates_total_log,
+    pass_rate_global,
+    avg_sd_time,
+    avg_global_weighted,
+    optional_share
+  ) |>
+  scale() # z-s
+
+# Clustering
+set.seed(123)
+km_5 <- kmeans(clustering_matrix, centers = 5, nstart = 25)
+
+clustering_base <- clustering_base |>
+  mutate(cluster_k5 = factor(km_5$cluster))
+
+# output of the cluster
+clustering_base |>
+  ggplot(
+    aes(
+      x = optional_share,
+      y = avg_global_weighted,
+      size = candidates_total_log,
+      color = factor(cluster_k5)
+    )
+  ) +
+  geom_point(alpha = 0.8) +
+  labs(
+    x = "Optional share",
+    y = "Weighted average grade",
+    size = "Log(total candidates)",
+    color = "Cluster"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+clustering_base |>
+  select(name, cluster_k5) |>
+  arrange(cluster_k5, name) |>
+  knitr::kable(
+    col.names = c("Asignatura", "Cluster")
+  )
+```
