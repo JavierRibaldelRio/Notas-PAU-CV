@@ -12,6 +12,7 @@ mod_map_region_ui <- function(id) {
   navset_card_tab(
     title = "Resultados por comarca",
 
+
     # Sidebar
     sidebar = sidebar(
       width = "40%",
@@ -55,6 +56,8 @@ mod_map_region_ui <- function(id) {
 
     nav_panel(
       "Tabla",
+      class = "mod-ranking",
+
       DTOutput(ns("comarcas_table"))
     )
   )
