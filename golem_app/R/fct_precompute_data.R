@@ -82,14 +82,14 @@ LEFT JOIN high_school_marks
       dplyr::group_by(name, region_code, type_id, year, call) |>
       summarise_pau_metrics(),
 
-    #without separate for each type_id under type_id = 4
+    #without separate for each type_id under type_id = 3
     df |>
       dplyr::group_by(name, region_code, year, call) |>
       summarise_pau_metrics() |>
       dplyr::mutate(type_id = as.integer(3))
   )
 
-  # Global of YEARS (year=0)
+  # Global of YEARS (year=0) which corresponds with al the years
 
   summarise_pau_metrics_all <- function(data) {
     data |>
@@ -127,6 +127,7 @@ LEFT JOIN high_school_marks
       dplyr::mutate(type_id = as.integer(3))
   )
 
+  # Every year + global year 
   region_data <- dplyr::bind_rows(region_data, resu)
 
   
