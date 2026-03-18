@@ -140,7 +140,9 @@ create_municialities_data <- function(con) {
     con,
     "
     SELECT 
+      regions.id AS code_region,
       regions.name AS regiones,
+      municipalities.id AS code_municipality,
       municipalities.name AS municipios,
       high_schools.id AS code_high_school,
       high_schools.name AS name_high_school,
@@ -176,12 +178,12 @@ create_municialities_data <- function(con) {
   municipality_data <- dplyr::bind_rows(
     # separte for eacht type_id
     df |>
-      dplyr::group_by(municipios, type_id_high_school, year, call) |>
+      dplyr::group_by(code_region, regiones, code_municipality, municipios, type_id_high_school, year, call) |>
       summarise_pau_metrics(),
 
     #without separate for each type_id under type_id = 4
     df |>
-      dplyr::group_by(municipios, year, call) |>
+      dplyr::group_by(code_region, regiones, code_municipality, municipios, year, call) |>
       summarise_pau_metrics() |>
       dplyr::mutate(type_id_high_school = as.integer(3))
   )
@@ -191,12 +193,12 @@ create_municialities_data <- function(con) {
     
     municipality_data |>
       dplyr::filter(type_id_high_school != 3) |>
-      dplyr::group_by(municipios, type_id_high_school, call) |>
+      dplyr::group_by(code_region, regiones, code_municipality, municipios, type_id_high_school, call) |>
       summarise_pau_metrics_all(),
 
     municipality_data |>
       dplyr::filter(type_id_high_school != 3) |>
-      dplyr::group_by(municipios, call) |>
+      dplyr::group_by(code_region, regiones, code_municipality, municipios, call) |>
       summarise_pau_metrics_all() |>
       dplyr::mutate(type_id_high_school = as.integer(3))
   )
