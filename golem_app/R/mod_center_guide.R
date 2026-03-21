@@ -9,12 +9,15 @@
 #' @importFrom shiny NS tagList
 mod_center_guide_ui <- function(id) {
   tagList(
+    # Placeholder that gets swapped between the home list and a center detail page
     uiOutput("center_page")
   )
 }
 
 #' UI auxiliar function
 
+# Renders the home page: a list of all high schools as clickable links.
+# Clicking a link fires a JS event that sets input$go_to_center on the server.
 page_home_ui <- function(con) {
   centers <- DBI::dbGetQuery(
     con,
@@ -31,6 +34,7 @@ page_home_ui <- function(con) {
           tags$a(
             href = "#",
             centers$name[i],
+            # Use JS to notify Shiny of the selected center ID without a full page reload
             onclick = sprintf(
               "Shiny.setInputValue('%s', '%s', {priority: 'event'}); return false;",
               "go_to_center",
@@ -42,6 +46,9 @@ page_home_ui <- function(con) {
     )
   )
 }
+
+# Renders the detail page for a single high school.
+# Fetches info, contact, and a plot of PAU results over the years.
 page_center_ui <- function(id, pool) {
   center <- dbGetQuery(
     pool,
@@ -49,6 +56,7 @@ page_center_ui <- function(id, pool) {
     params = list(id)
   )
 
+  # Guard: show a friendly card if the ID does not exist in the DB
   if (nrow(center) == 0) {
     return(
       bslib::card(
@@ -61,19 +69,20 @@ page_center_ui <- function(id, pool) {
 
   center <- center[1, ]
 
+  # Encode the stored image blob as base64 so it can be embedded in an <img> tag
   img_base64 <- NULL
   if (!is.null(center$image[[1]])) {
     img_base64 <- base64enc::base64encode(center$image[[1]])
   }
 
   bslib::card(
-    fill = FALSE, # ← rompe el comportamiento fillable
+    fill = FALSE, # disables fillable behaviour so the card sizes to its content
 
     bslib::card_header(
       paste("Ficha del centro:", center$name)
     ),
 
-    # IMAGEN
+    # IMAGE — only rendered when the school has a stored photo
     if (!is.null(img_base64)) {
       tags$div(
         style = "margin-bottom:30px;",
@@ -93,7 +102,7 @@ page_center_ui <- function(id, pool) {
       )
     },
 
-    # INFORMACIÓN
+    # GENERAL INFO
     bslib::card(
       fill = FALSE,
       bslib::card_header("Información general"),
@@ -109,7 +118,7 @@ page_center_ui <- function(id, pool) {
 
     br(),
 
-    # CONTACTO
+    # CONTACT
     bslib::card(
       fill = FALSE,
       bslib::card_header("Contacto"),
@@ -126,7 +135,7 @@ page_center_ui <- function(id, pool) {
 
     br(),
 
-    # GRÁFICA
+    # RESULTS CHART — metric is controlled by the selectizeInput below
     bslib::card(
       fill = FALSE,
       bslib::card_header("Evolución de resultados PAU"),
@@ -151,6 +160,7 @@ page_center_ui <- function(id, pool) {
 
     br(),
 
+    # Back button: sets go_to_center to "0" which the server treats as "go home"
     tags$a(
       href = "#",
       class = "btn btn-outline-secondary",
@@ -164,6 +174,7 @@ page_center_ui <- function(id, pool) {
   )
 }
 
+# Fallback page shown when a center_id in the URL does not match any school
 page_invalid_ui <- function() {
   tagList(
     h2("Centro no encontrado"),
@@ -184,22 +195,29 @@ page_invalid_ui <- function() {
 #'
 #' @noRd
 mod_center_guide_server <- function(id, input, output, session, pool) {
+  # Reactive value holding the currently selected center ID.
+  # "0" means no center selected (home view).
   center_id <- reactiveVal("0")
 
+  # ── Routing ───────────────────────────────────────────────────────────────
+
+  # When the user switches tabs via the navbar, update the URL hash accordingly.
+  # If leaving the "centros" tab, reset center_id so the home list is shown on return.
   observeEvent(input$page_selector, {
     target_tab <- input$page_selector
-  
+
     if (target_tab == "centros") {
       current_query <- session$clientData$url_search
-  
+
+      # TODO: fix bug of having center_id at centers
       updateQueryString(
         paste0(current_query, "#", target_tab),
         mode = "replace",
         session
       )
     } else {
-      center_id("0")   # resetear aquí
-  
+      center_id("0")   # reset center selection when leaving the tab
+
       updateQueryString(
         paste0("?#", target_tab),
         mode = "replace",
@@ -208,9 +226,8 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
     }
   }, ignoreInit = TRUE)
 
-  # -----------------------------------------------------
-  # 2) URL → UI  (deep links, back/forward, carga inicial)
-  # -----------------------------------------------------
+  # On startup, read the URL hash and navigate the navbar to the matching tab.
+  # Also resets center_id when the hash points away from "centros".
   observeEvent(
     session$clientData$url_hash,
     {
@@ -231,9 +248,8 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
     ignoreInit = FALSE
   )
 
-  # -----------------------------------------------------
-  # 3) Inicialización si no hay hash
-  # -----------------------------------------------------
+  # If there is no hash in the URL, write one based on the active tab
+  # so the URL always reflects the current view.
   observe({
     tab <- sub("^#", "", session$clientData$url_hash)
 
@@ -248,9 +264,8 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
 
   })
 
-  # -----------------------------------------------------
-  # 4) Limpiar center_id fuera de #centros
-  # -----------------------------------------------------
+  # Remove a stale center_id query param from the URL when the user is not
+  # on the "centros" tab (e.g. after navigating away via the navbar).
   observe({
     tab <- sub("^#", "", session$clientData$url_hash)
     query <- parseQueryString(session$clientData$url_search)
@@ -264,6 +279,8 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
     }
   })
 
+  # Sync center_id reactive value from the URL query string on every URL change.
+  # Falls back to "0" (home) when no center_id param is present.
   observe({
     query <- parseQueryString(session$clientData$url_search)
     id <- query$center_id %||% "0"
@@ -271,8 +288,30 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
     center_id(id)
   })
 
-  
 
+  # ── In-page navigation ────────────────────────────────────────────────────
+
+  # Fired when the user clicks a school link or the "back" button.
+  # Updates both the reactive state and the URL so the view and address bar stay in sync.
+  observeEvent(input$go_to_center, {
+    newURL <- ""
+    if (input$go_to_center != "0") {
+      newURL <- paste0(
+        "?center_id=",
+        input$go_to_center,
+        "#centros"
+      )
+    }
+
+    center_id(input$go_to_center) # update state immediately (no need to wait for URL observer)
+
+    updateQueryString(newURL, mode = "replace", session)
+  })
+
+
+  # ── Data ──────────────────────────────────────────────────────────────────
+
+  # Fetches PAU result rows for the given school (call = 2 = ordinary sitting)
   get_marks <- function(cente_id) {
     dbGetQuery(
       pool,
@@ -288,22 +327,10 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
     )
   }
 
-  observeEvent(input$go_to_center, {
-    # update url
-    newURL <- ""
-    if (input$go_to_center != "0") {
-      newURL <- paste0(
-        "?center_id=",
-        input$go_to_center,
-        "#centros"
-      )
-    }
+  # ── Outputs ───────────────────────────────────────────────────────────────
 
-    center_id(input$go_to_center) # Update state
-
-    updateQueryString(newURL, mode = "replace", session)
-  })
-
+  # Line chart of PAU metrics over the years for the current center.
+  # Re-renders whenever the selected metric or center changes.
   output$center_marks_plot <- renderPlot({
     req(input$metric)
     id <- center_id()
@@ -328,6 +355,8 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
       theme_base()
   })
 
+  # Swaps between the home list, a center detail page, or the invalid-ID fallback
+  # depending on the current center_id value.
   output$center_page <- renderUI({
     id <- center_id()
 
