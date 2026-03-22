@@ -8,186 +8,370 @@
 #'
 #' @importFrom shiny NS tagList
 mod_center_guide_ui <- function(id) {
-  tagList(
-    # Placeholder that gets swapped between the home list and a center detail page
+  # overflow-y:auto neutralises the fillable flex context coming from page_fillable,
+  # preventing leaflet's absolutely-positioned layers from escaping their card.
+  tags$div(
+    style = "overflow-y: auto; height: 100%; padding: 1rem;",
     uiOutput("center_page")
   )
 }
 
-#' UI auxiliar function
 
-# Renders the home page: a list of all high schools as clickable links.
+# ── UI: home ──────────────────────────────────────────────────────────────────
+
+# Renders the home page: a searchable list of all high schools as clickable links.
 # Clicking a link fires a JS event that sets input$go_to_center on the server.
 page_home_ui <- function(con) {
-  centers <- DBI::dbGetQuery(
-    con,
-    "SELECT name, id FROM high_schools"
-  )
+  centers <- dbGetQuery(con, "SELECT name, id FROM high_schools ORDER BY name")
 
   tagList(
-    h2("Guía de centros"),
-    p("Seleccione un centro:"),
+    h2(icon("school"), " Guía de centros"),
+    p(class = "text-muted", sprintf("%d centros disponibles", nrow(centers))),
 
-    tags$ul(
+    tags$input(
+      type        = "text",
+      id          = "center-search",
+      class       = "form-control mb-3",
+      placeholder = "Buscar centro..."
+    ),
+
+    tags$div(
+      class = "list-group",
+      id    = "center-list",
       lapply(seq_len(nrow(centers)), function(i) {
-        tags$li(
-          tags$a(
-            href = "#",
-            centers$name[i],
-            # Use JS to notify Shiny of the selected center ID without a full page reload
-            onclick = sprintf(
-              "Shiny.setInputValue('%s', '%s', {priority: 'event'}); return false;",
-              "go_to_center",
-              centers$id[i]
-            )
-          )
+        tags$a(
+          href    = "#",
+          class   = "list-group-item list-group-item-action d-flex justify-content-between align-items-center",
+          onclick = sprintf(
+            "Shiny.setInputValue('go_to_center', '%s', {priority: 'event'}); return false;",
+            centers$id[i]
+          ),
+          centers$name[i],
+          icon("chevron-right")
         )
       })
-    )
+    ),
+
+    # Client-side filter — no server round-trip needed
+    tags$script(HTML(
+      "document.getElementById('center-search').addEventListener('input', function() {
+        var val = this.value.toLowerCase();
+        document.querySelectorAll('#center-list a').forEach(function(el) {
+          el.style.display = el.textContent.toLowerCase().includes(val) ? '' : 'none';
+        });
+      });"
+    ))
   )
 }
 
-# Renders the detail page for a single high school.
-# Fetches info, contact, and a plot of PAU results over the years.
-page_center_ui <- function(id, pool) {
-  center <- dbGetQuery(
-    pool,
-    "SELECT * FROM high_schools WHERE id = ?",
-    params = list(id)
-  )
 
-  # Guard: show a friendly card if the ID does not exist in the DB
-  if (nrow(center) == 0) {
-    return(
-      bslib::card(
-        fill = FALSE,
-        bslib::card_header("Centro no encontrado"),
-        "El centro solicitado no existe."
-      )
+# ── UI: center detail sub-components ──────────────────────────────────────────
+
+# Photo column: shows the school image or an empty placeholder to keep the grid.
+center_photo_ui <- function(img_base64) {
+  if (!is.null(img_base64)) {
+    tags$img(
+      src   = paste0("data:image/jpeg;base64,", img_base64),
+      style = "width:100%; height:320px; object-fit:cover; border-radius:10px;"
     )
+  } else {
+    tags$div(style = "height:320px;")
   }
+}
 
-  center <- center[1, ]
+# General-info card: field list on the left, embedded mini-map on the right.
+center_info_card_ui <- function(center) {
+  regime_map   <- c("0" = "Públic", "1" = "Concertado-Privado", "3" = "Privado")
+  regime_label <- regime_map[as.character(center$type_id)]
 
-  # Encode the stored image blob as base64 so it can be embedded in an <img> tag
-  img_base64 <- NULL
-  if (!is.null(center$image[[1]])) {
-    img_base64 <- base64enc::base64encode(center$image[[1]])
-  }
+  addr_parts <- Filter(nzchar, c(
+    if (!is.na(center$address))           center$address           else "",
+    if (!is.na(center$postal_code))       center$postal_code       else "",
+    if (!is.na(center$municipality_name)) center$municipality_name else "",
+    if (!is.na(center$province_name))     center$province_name     else "",
+    if (!is.na(center$region_name))       center$region_name       else ""
+  ))
 
   bslib::card(
-    fill = FALSE, # disables fillable behaviour so the card sizes to its content
+    fill  = FALSE,
+    style = "height:320px; overflow-y:auto;",
+    bslib::card_header(icon("circle-info"), " Información general"),
 
-    bslib::card_header(
-      paste("Ficha del centro:", center$name)
-    ),
+    tags$div(
+      style = "display:flex; gap:1rem; height:100%;",
 
-    # IMAGE — only rendered when the school has a stored photo
-    if (!is.null(img_base64)) {
-      tags$div(
-        style = "margin-bottom:30px;",
-
-        tags$img(
-          src = paste0("data:image/jpeg;base64,", img_base64),
-          style = "
-            max-width:100%;
-            max-height:420px;
-            object-fit:contain;
-            border-radius:10px;
-            display:block;
-            margin-left:auto;
-            margin-right:auto;
-          "
-        )
-      )
-    },
-
-    # GENERAL INFO
-    bslib::card(
-      fill = FALSE,
-      bslib::card_header("Información general"),
-
+      # Fields — flex:1 + min-width:0 allow text to wrap without squeezing the map
       tags$ul(
-        tags$li(strong("Código: "), center$code),
-        tags$li(strong("CIF: "), center$cif),
-        tags$li(strong("Titularidad: "), center$owner),
-        tags$li(strong("Dirección: "), center$address),
-        tags$li(strong("Código postal: "), center$postal_code)
-      )
-    ),
-
-    br(),
-
-    # CONTACT
-    bslib::card(
-      fill = FALSE,
-      bslib::card_header("Contacto"),
-
-      tags$ul(
-        tags$li(strong("Email: "), center$email),
-        tags$li(strong("Teléfono: "), center$phone_number),
-        tags$li(
-          strong("Web: "),
-          tags$a(center$website, href = center$website, target = "_blank")
-        )
-      )
-    ),
-
-    br(),
-
-    # RESULTS CHART — metric is controlled by the selectizeInput below
-    bslib::card(
-      fill = FALSE,
-      bslib::card_header("Evolución de resultados PAU"),
-
-      selectizeInput(
-        "metric",
-        "Indicador",
-        choices = c(
-          "Nota media PAU" = "average_compulsory_pau",
-          "Nota media Bachillerato" = "average_bach",
-          "Aprobados (%)" = "pass_percentatge",
-          "Desv. estándar PAU" = "standard_dev_pau"
-        ),
-        selected = "average_compulsory_pau"
+        class = "list-unstyled mb-0",
+        style = "flex:1 1 0; min-width:0; overflow-wrap:break-word;",
+        if (!is.na(center$code) && nzchar(center$code))
+          tags$li(icon("hashtag"), " ", strong("Código: "), center$code),
+        if (!is.na(center$cif) && nzchar(center$cif))
+          tags$li(icon("id-card"), " ", strong("CIF: "), center$cif),
+        if (!is.na(regime_label))
+          tags$li(icon("building"), " ", strong("Régimen: "), tags$span(class = "noun", regime_label)),
+        if (!is.na(center$owner) && nzchar(center$owner))
+          tags$li(icon("user"), " ", strong("Titularidad: "), tags$span(class = "noun", center$owner)),
+        if (length(addr_parts) > 0)
+          tags$li(
+            icon("location-dot"), " ",
+            strong("Dirección: "),
+            tags$span(class = "noun", paste(addr_parts, collapse = ", "))
+          )
       ),
 
-      plotOutput(
-        "center_marks_plot",
-        height = "400px"
-      )
-    ),
-
-    br(),
-
-    # Back button: sets go_to_center to "0" which the server treats as "go home"
-    tags$a(
-      href = "#",
-      class = "btn btn-outline-secondary",
-      "Volver a la guía",
-      onclick = sprintf(
-        "Shiny.setInputValue('%s', '%s', {priority: 'event'}); return false;",
-        "go_to_center",
-        "0"
-      )
+      # Map — fills remaining horizontal space
+      if (!is.na(center$latitude) && !is.na(center$longitude))
+        tags$div(
+          style = "flex:1 1 0; position:relative; min-height:200px;",
+          leaflet::leafletOutput("center_map", height = "100%")
+        )
     )
   )
 }
 
-# Fallback page shown when a center_id in the URL does not match any school
+# Contact card: email (mailto), phone, website.
+center_contact_card_ui <- function(center) {
+  bslib::card(
+    fill = FALSE,
+    bslib::card_header(icon("address-book"), " Contacto"),
+
+    tags$ul(
+      class = "list-unstyled mb-0",
+      if (!is.na(center$email) && nzchar(center$email))
+        tags$li(
+          icon("envelope"), " ",
+          tags$a(center$email, href = paste0("mailto:", center$email))
+        ),
+      if (!is.na(center$phone_number) && nzchar(center$phone_number))
+        tags$li(icon("phone"), " ", center$phone_number),
+      if (!is.na(center$website) && nzchar(center$website))
+        tags$li(
+          icon("globe"), " ",
+          tags$a(center$website, href = center$website, target = "_blank")
+        )
+    )
+  )
+}
+
+# Chart card: metric selector + plot output.
+center_chart_card_ui <- function() {
+  bslib::card(
+    fill = FALSE,
+    bslib::card_header(icon("chart-line"), " Evolución de resultados PAU"),
+
+    selectizeInput(
+      "metric",
+      "Indicador",
+      choices = c(
+        "Nota media PAU"          = "average_compulsory_pau",
+        "Nota media Bachillerato" = "average_bach",
+        "Aprobados (%)"           = "pass_percentatge",
+        "Desv. estándar PAU"      = "standard_dev_pau",
+        "Diferencia Bach–PAU"     = "diference_average_bach_pau",
+        "Coef. variación PAU"     = "coeff_variation_pau",
+        "Matriculados"            = "enrolled_total",
+        "Presentados"             = "candidates",
+        "Aprobados"               = "pass"
+      ),
+      selected = "average_compulsory_pau"
+    ),
+
+    plotOutput("center_marks_plot", height = "400px")
+  )
+}
+
+# Full detail page assembled from sub-components.
+page_center_ui <- function(center) {
+  img_base64 <- NULL
+  if (!is.null(center$image[[1]]))
+    img_base64 <- base64enc::base64encode(center$image[[1]])
+
+  bslib::card(
+    fill = FALSE,
+
+    bslib::card_header(
+      class = "d-flex align-items-center gap-2",
+      icon("school"), tags$span(class = "noun", center$name)
+    ),
+
+    bslib::layout_columns(
+      col_widths = c(4, 8),
+      style      = "height: 320px;",
+      center_photo_ui(img_base64),
+      center_info_card_ui(center)
+    ),
+
+    br(),
+    center_contact_card_ui(center),
+    br(),
+    uiOutput("center_kpi_boxes"),
+    br(),
+    center_chart_card_ui(),
+    br(),
+
+    tags$a(
+      href    = "#",
+      class   = "btn btn-outline-secondary",
+      onclick = "Shiny.setInputValue('go_to_center', '0', {priority: 'event'}); return false;",
+      icon("arrow-left"), " Volver a la guía"
+    )
+  )
+}
+
+# Fallback page shown when a center_id in the URL does not match any school.
 page_invalid_ui <- function() {
   tagList(
     h2("Centro no encontrado"),
-
     p("El identificador solicitado no existe."),
-
     br(),
+    tags$a(href = "?#centros", "Volver a la guía")
+  )
+}
 
-    tags$a(
-      href = "?#centros",
-      "Volver a la guía"
+
+# ── Server helpers (pure functions) ───────────────────────────────────────────
+
+# Builds the comparison ggplot from pre-fetched data frames.
+# Pure function — no reactivity, easy to unit-test.
+build_marks_plot <- function(marks_df, nearest_df, global_df,
+                             center_name, metric, theme_palette) {
+  school_only <- c("diference_average_bach_pau", "coeff_variation_pau")
+  cols        <- c("year", "source", metric)
+  sources_ord <- character(0)
+  color_map   <- character(0)
+  dfs         <- list()
+
+  # 1. Global — first in legend
+  if (!metric %in% school_only && metric %in% names(global_df)) {
+    dfs         <- c(dfs, list(global_df[, cols, drop = FALSE]))
+    sources_ord <- c(sources_ord, "Global")
+    color_map   <- c(color_map, theme_palette[["Global"]])
+  }
+
+  # 2. Selected center
+  marks_df$source <- center_name
+  dfs             <- c(dfs, list(marks_df[, cols, drop = FALSE]))
+  sources_ord     <- c(sources_ord, center_name)
+  color_map       <- c(color_map, theme_palette[["current"]])
+
+  # 3. Nearest centers in distance order
+  if (!is.null(nearest_df) && metric %in% names(nearest_df)) {
+    near_names <- unique(nearest_df$source)
+    near_keys  <- c("near_1", "near_2")
+    for (i in seq_along(near_names)) {
+      nm          <- near_names[[i]]
+      dfs         <- c(dfs, list(nearest_df[nearest_df$source == nm, cols, drop = FALSE]))
+      sources_ord <- c(sources_ord, nm)
+      color_map   <- c(color_map, theme_palette[[near_keys[[i]]]])
+    }
+  }
+
+  df_combined        <- do.call(rbind, dfs)
+  df_combined$source <- factor(df_combined$source, levels = sources_ord)
+  names(color_map)   <- sources_ord
+
+  ggplot(df_combined, aes(x = year, y = .data[[metric]], color = source, group = source)) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 3) +
+    scale_color_manual(values = color_map) +
+    labs(x = "Año", y = NULL, color = NULL) +
+    theme_base()
+}
+
+# Builds the four KPI value boxes from the latest-year row.
+# Pure function — no reactivity.
+build_kpi_boxes <- function(latest) {
+  fmt <- function(x, digits = 2) {
+    if (is.null(x) || is.na(x)) return("—")
+    formatC(round(x, digits), format = "f", digits = digits)
+  }
+
+  bslib::layout_columns(
+    col_widths = c(3, 3, 3, 3),
+    bslib::value_box(
+      title    = paste("Nota media PAU", latest$year),
+      value    = fmt(latest$average_compulsory_pau),
+      showcase = icon("graduation-cap"),
+      theme    = "primary"
+    ),
+    bslib::value_box(
+      title    = paste("Aprobados", latest$year),
+      value    = paste0(fmt(latest$pass_percentatge, 1), " %"),
+      showcase = icon("circle-check"),
+      theme    = "success"
+    ),
+    bslib::value_box(
+      title    = paste("Diferencia Bach–PAU", latest$year),
+      value    = fmt(latest$diference_average_bach_pau),
+      showcase = icon("arrow-trend-down"),
+      theme    = "warning"
+    ),
+    bslib::value_box(
+      title    = paste("Presentados", latest$year),
+      value    = latest$candidates %||% "—",
+      showcase = icon("users"),
+      theme    = "secondary"
     )
   )
+}
+
+
+# ── Server helpers (reactive / observer setup) ────────────────────────────────
+
+# Registers all URL-routing observers. Called once inside mod_center_guide_server.
+setup_routing_observers <- function(input, session, center_id) {
+  # Tab change → update URL hash; leaving "centros" resets selected center.
+  observeEvent(input$page_selector, {
+    target_tab <- input$page_selector
+    if (target_tab == "centros") {
+      updateQueryString(
+        paste0(session$clientData$url_search, "#", target_tab),
+        mode = "replace", session
+      )
+    } else {
+      center_id("0")
+      updateQueryString(paste0("?#", target_tab), mode = "replace", session)
+    }
+  }, ignoreInit = TRUE)
+
+  # On startup: navigate navbar to the tab matching the URL hash.
+  observeEvent(session$clientData$url_hash, {
+    tab <- sub("^#", "", session$clientData$url_hash)
+    if (nzchar(tab) && input$page_selector != tab)
+      updateNavbarPage(session, "page_selector", selected = tab)
+    if (tab != "centros") center_id("0")
+  }, ignoreInit = FALSE)
+
+  # Write a hash when the URL has none.
+  observe({
+    tab <- sub("^#", "", session$clientData$url_hash)
+    if (!nzchar(tab) && !is.null(input$page_selector))
+      updateQueryString(paste0("?#", input$page_selector), mode = "replace", session)
+  })
+
+  # Clean up stale center_id param when not on the "centros" tab.
+  observe({
+    tab   <- sub("^#", "", session$clientData$url_hash)
+    query <- parseQueryString(session$clientData$url_search)
+    if (!is.null(query$center_id) && tab != "centros")
+      updateQueryString(paste0("?#", tab), mode = "replace", session)
+  })
+
+  # Sync center_id from URL query string.
+  observe({
+    query <- parseQueryString(session$clientData$url_search)
+    center_id(query$center_id %||% "0")
+  })
+
+  # In-page navigation: school link or back button.
+  observeEvent(input$go_to_center, {
+    newURL <- if (input$go_to_center != "0")
+      paste0("?center_id=", input$go_to_center, "#centros")
+    else ""
+    center_id(input$go_to_center)
+    updateQueryString(newURL, mode = "replace", session)
+  })
 }
 
 
@@ -195,180 +379,133 @@ page_invalid_ui <- function() {
 #'
 #' @noRd
 mod_center_guide_server <- function(id, input, output, session, pool) {
-  # Reactive value holding the currently selected center ID.
-  # "0" means no center selected (home view).
   center_id <- reactiveVal("0")
 
-  # ── Routing ───────────────────────────────────────────────────────────────
+  setup_routing_observers(input, session, center_id)
 
-  # When the user switches tabs via the navbar, update the URL hash accordingly.
-  # If leaving the "centros" tab, reset center_id so the home list is shown on return.
-  observeEvent(input$page_selector, {
-    target_tab <- input$page_selector
-
-    if (target_tab == "centros") {
-      current_query <- session$clientData$url_search
-
-      # TODO: fix bug of having center_id at centers
-      updateQueryString(
-        paste0(current_query, "#", target_tab),
-        mode = "replace",
-        session
-      )
-    } else {
-      center_id("0")   # reset center selection when leaving the tab
-
-      updateQueryString(
-        paste0("?#", target_tab),
-        mode = "replace",
-        session
-      )
-    }
-  }, ignoreInit = TRUE)
-
-  # On startup, read the URL hash and navigate the navbar to the matching tab.
-  # Also resets center_id when the hash points away from "centros".
-  observeEvent(
-    session$clientData$url_hash,
-    {
-      tab <- sub("^#", "", session$clientData$url_hash)
-
-      if (nzchar(tab) && input$page_selector != tab) {
-        updateNavbarPage(
-          session,
-          "page_selector",
-          selected = tab
-        )
-      }
-
-      if (tab != "centros") {
-        center_id("0")
-      }
-    },
-    ignoreInit = FALSE
-  )
-
-  # If there is no hash in the URL, write one based on the active tab
-  # so the URL always reflects the current view.
-  observe({
-    tab <- sub("^#", "", session$clientData$url_hash)
-
-    if (!nzchar(tab) && !is.null(input$page_selector)) {
-      updateQueryString(
-        paste0("?#", input$page_selector),
-        mode = "replace",
-        session
-      )
-    }
-
-
+  # ── Theme ──────────────────────────────────────────────────────────────────
+  theme_palette <- isolate({
+    tv <- bslib::bs_get_variables(
+      session$getCurrentTheme(),
+      c("primary", "warning", "success", "dark")
+    )
+    c(Global = tv[["dark"]], current = tv[["primary"]],
+      near_1 = tv[["warning"]], near_2 = tv[["success"]])
   })
 
-  # Remove a stale center_id query param from the URL when the user is not
-  # on the "centros" tab (e.g. after navigating away via the navbar).
-  observe({
-    tab <- sub("^#", "", session$clientData$url_hash)
-    query <- parseQueryString(session$clientData$url_search)
+  # ── Reactives ──────────────────────────────────────────────────────────────
 
-    if (!is.null(query$center_id) && tab != "centros") {
-      updateQueryString(
-        paste0("?#", tab),
-        mode = "replace",
-        session
-      )
-    }
+  center_data <- reactive({
+    id <- center_id()
+    if (is.null(id) || id == "0") return(NULL)
+    row <- dbGetQuery(
+      pool,
+      "SELECT hs.*, m.name AS municipality_name,
+              p.name AS province_name, r.name AS region_name
+       FROM high_schools hs
+       LEFT JOIN municipalities m ON m.id = hs.municipality_id
+       LEFT JOIN provinces      p ON p.id = m.province
+       LEFT JOIN regions        r ON r.id = m.region
+       WHERE hs.id = ?",
+      params = list(id)
+    )
+    if (nrow(row) == 0) return(NULL)
+    row[1, ]
   })
 
-  # Sync center_id reactive value from the URL query string on every URL change.
-  # Falls back to "0" (home) when no center_id param is present.
-  observe({
-    query <- parseQueryString(session$clientData$url_search)
-    id <- query$center_id %||% "0"
-
-    center_id(id)
-  })
-
-
-  # ── In-page navigation ────────────────────────────────────────────────────
-
-  # Fired when the user clicks a school link or the "back" button.
-  # Updates both the reactive state and the URL so the view and address bar stay in sync.
-  observeEvent(input$go_to_center, {
-    newURL <- ""
-    if (input$go_to_center != "0") {
-      newURL <- paste0(
-        "?center_id=",
-        input$go_to_center,
-        "#centros"
-      )
-    }
-
-    center_id(input$go_to_center) # update state immediately (no need to wait for URL observer)
-
-    updateQueryString(newURL, mode = "replace", session)
-  })
-
-
-  # ── Data ──────────────────────────────────────────────────────────────────
-
-  # Fetches PAU result rows for the given school (call = 2 = ordinary sitting)
-  get_marks <- function(cente_id) {
+  marks_data <- reactive({
+    center <- req(center_data())
     dbGetQuery(
       pool,
-      "SELECT year, call,
-               average_compulsory_pau,
-               average_bach,
-               pass_percentatge,
-               standard_dev_pau
-        FROM high_school_marks
-        WHERE high_school_id = ? and call = 2
-        ",
-      params = list(cente_id)
+      "SELECT year, call, enrolled_total, candidates, pass,
+              pass_percentatge, average_bach, average_compulsory_pau,
+              standard_dev_pau, diference_average_bach_pau, coeff_variation_pau
+       FROM high_school_marks
+       WHERE high_school_id = ? AND call = 2
+       ORDER BY year",
+      params = list(center$id)
     )
-  }
-
-  # ── Outputs ───────────────────────────────────────────────────────────────
-
-  # Line chart of PAU metrics over the years for the current center.
-  # Re-renders whenever the selected metric or center changes.
-  output$center_marks_plot <- renderPlot({
-    req(input$metric)
-    id <- center_id()
-
-    df <- get_marks(id)
-
-    ggplot(
-      df,
-      aes(
-        x = year,
-        y = .data[[input$metric]],
-        group = call
-      )
-    ) +
-      geom_line(linewidth = 1) +
-      geom_point(size = 3) +
-      labs(
-        x = "Año",
-        y = NULL,
-        color = "Convocatoria"
-      ) +
-      theme_base()
   })
 
-  # Swaps between the home list, a center detail page, or the invalid-ID fallback
-  # depending on the current center_id value.
+  nearest_marks <- reactive({
+    center <- req(center_data())
+    if (is.na(center$latitude) || is.na(center$longitude)) return(NULL)
+
+    nc <- dbGetQuery(
+      pool,
+      "SELECT id, name FROM high_schools
+       WHERE id != ? AND latitude IS NOT NULL AND longitude IS NOT NULL
+       ORDER BY ((latitude - ?) * (latitude - ?) + (longitude - ?) * (longitude - ?)) ASC
+       LIMIT 2",
+      params = list(center$id,
+                    center$latitude, center$latitude,
+                    center$longitude, center$longitude)
+    )
+    if (nrow(nc) == 0) return(NULL)
+
+    placeholders <- paste(rep("?", nrow(nc)), collapse = ", ")
+    dbGetQuery(
+      pool,
+      sprintf(
+        "SELECT hsm.year, hs.name AS source,
+                hsm.enrolled_total, hsm.candidates, hsm.pass,
+                hsm.pass_percentatge, hsm.average_bach,
+                hsm.average_compulsory_pau, hsm.standard_dev_pau,
+                hsm.diference_average_bach_pau, hsm.coeff_variation_pau
+         FROM high_school_marks hsm
+         JOIN high_schools hs ON hs.id = hsm.high_school_id
+         WHERE hsm.high_school_id IN (%s) AND hsm.call = 2
+         ORDER BY hsm.year", placeholders
+      ),
+      params = as.list(nc$id)
+    )
+  })
+
+  global_marks <- reactive({
+    df <- dbGetQuery(
+      pool,
+      "SELECT year, enrolled AS enrolled_total, candidates, pass,
+              pass_percentage AS pass_percentatge, average_bach,
+              average_pau AS average_compulsory_pau, standard_dev_pau
+       FROM global_results WHERE call = 2 ORDER BY year"
+    )
+    df$source <- "Global"
+    df
+  })
+
+  # ── Outputs ────────────────────────────────────────────────────────────────
+
+  output$center_marks_plot <- renderPlot({
+    build_marks_plot(
+      marks_df    = marks_data(),
+      nearest_df  = nearest_marks(),
+      global_df   = global_marks(),
+      center_name = req(center_data())$name,
+      metric      = req(input$metric),
+      theme_palette
+    )
+  })
+
+  output$center_kpi_boxes <- renderUI({
+    df <- marks_data()
+    if (nrow(df) == 0) return(NULL)
+    build_kpi_boxes(df[which.max(df$year), ])
+  })
+
+  output$center_map <- leaflet::renderLeaflet({
+    center <- req(center_data())
+    req(!is.na(center$latitude), !is.na(center$longitude))
+    leaflet::leaflet(options = leaflet::leafletOptions(scrollWheelZoom = FALSE)) |>
+      leaflet::addTiles() |>
+      leaflet::addMarkers(lng = center$longitude, lat = center$latitude, popup = center$name)
+  })
+
   output$center_page <- renderUI({
     id <- center_id()
-
-    if (is.null(id) || id == "0") {
-      return(page_home_ui(pool))
-    }
-
-    if (id != "23") {
-      return(page_center_ui(id, pool))
-    }
-
-    page_invalid_ui()
+    if (is.null(id) || id == "0") return(page_home_ui(pool))
+    center <- center_data()
+    if (is.null(center)) return(page_invalid_ui())
+    page_center_ui(center)
   })
 }
 
