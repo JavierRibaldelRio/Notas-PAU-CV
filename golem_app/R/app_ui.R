@@ -58,7 +58,7 @@ app_ui <- function(request) {
           nav_panel(
             "Municipio",
             value = "regions-municipio",
-            "WIP"
+            mod_regions_municipalities_ui("regions_municipalities_1")
           )
         ),
 
