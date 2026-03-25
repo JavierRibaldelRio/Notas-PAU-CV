@@ -18,38 +18,10 @@ mod_regions_municipalities_ui <- function(id) {
         # enhances responsive plotly
         open = "always",
 
-        # call selector
-        mod_mean_year_selector_ui(
-          ns("mean_year_selector_3"),
-          label = "Nivel de agregación",
-          global_option = "Media interanual"
-        ),
-
-        layout_columns(
-          widths = c(6, 6), # two columns with the same width
-          mod_select_call_ui(ns("select_call_2")),
-          mod_select_high_school_type_ui(ns("select_high_school_type_2"))
-        ),
-
-        hr(),
-        
-        radioButtons(
-          inputId = ns("varname_2"),
-          label = "Variable",
-          choices = list(
-            "Presentados" = "candidates_total_sum",
-            "Aprobados" = "pass_total",
-            "Aprobados (%)" = "pass_percentatge",
-            "Media Bachillerato" = "average_bach",
-            "Media Fase Obligatoria" = "average_compulsory_pau",
-            "Diferencia Media Bach. - Media Pau" = "diference_average_bach_pau"
-          )
-        ),
-
         # id values from SQL table
         selectizeInput(
           inputId = ns("regions_selectize_1"),
-          label = "Selecciona la comarca",
+          label = "Comarca",
           choices = list(
             "La Marina Alta" = 1,
             "L'Alicantí" = 2,
@@ -85,8 +57,37 @@ mod_regions_municipalities_ui <- function(id) {
             "La Plana de Utiel-Requena" = 32,
             "València" = 33
           )
-        )
+        ),
 
+        hr(),
+
+        # call selector
+        mod_mean_year_selector_ui(
+          ns("mean_year_selector_3"),
+          label = "Nivel de agregación",
+          global_option = "Media interanual"
+        ),
+
+        layout_columns(
+          widths = c(6, 6), # two columns with the same width
+          mod_select_call_ui(ns("select_call_2")),
+          mod_select_high_school_type_ui(ns("select_high_school_type_2"))
+        ),
+
+        hr(),
+        
+        radioButtons(
+          inputId = ns("varname_2"),
+          label = "Variable",
+          choices = list(
+            "Presentados" = "candidates_total_sum",
+            "Aprobados" = "pass_total",
+            "Aprobados (%)" = "pass_percentatge",
+            "Media Bachillerato" = "average_bach",
+            "Media Fase Obligatoria" = "average_compulsory_pau",
+            "Diferencia Media Bach. - Media Pau" = "diference_average_bach_pau"
+          )
+        )
       ),
       nav_panel(
         title = "Tabla",
@@ -99,8 +100,7 @@ mod_regions_municipalities_ui <- function(id) {
 }
 
 # read data
-data_municipality <- readRDS("inst/app/data/data_municipality.rds") |>
-  mutate(code_region = as.character(code_region))
+data_municipality <- readRDS("inst/app/data/data_municipality.rds")
     
 #' regions_municipalities Server Functions
 #'
@@ -111,30 +111,38 @@ mod_regions_municipalities_server <- function(id) {
     ns <- session$ns
 
     selector_year <- mod_mean_year_selector_server("mean_year_selector_3")
-    get_call      <- mod_select_call_server("select_call_2")
-    get_type      <- mod_select_high_school_type_server("select_high_school_type_2")
+    get_call <- mod_select_call_server("select_call_2")
+    get_type <- mod_select_high_school_type_server("select_high_school_type_2")
 
     selected_data <- reactive({
       req(get_call(), selector_year(), get_type())
 
       data_municipality |>
         filter(
-          call      == get_call() &
-          year      == selector_year() &
-          type_id_high_school   == get_type() &              
-          code_region == as.character(input$regions_selectize_1)  # filtrer region
+          call == get_call() &
+          year == selector_year() &
+          type_id_high_school == get_type() &              
+          code_region == input$regions_selectize_1  # filtrer region
         )
     })
 
     output$tabla_municipios <- renderDT({
-      req(selected_data(), input$varname_2)
+      req(input$varname_2)
+
+      if (nrow(selected_data()) == 0) {
+        return(datatable(
+          data.frame(Mensaje = "No hay datos disponibles para esta selección"),
+          rownames = FALSE,
+          options = list(dom = "t")
+        ))
+      }
 
       label_var <- switch(input$varname_2,
-        "candidates_total_sum"       = "Presentados",
-        "pass_total"                 = "Aprobados",
-        "pass_percentatge"           = "Aprobados (%)",
-        "average_bach"               = "Media Bachillerato",
-        "average_compulsory_pau"     = "Media Fase Obligatoria",
+        "candidates_total_sum" = "Presentados",
+        "pass_total" = "Aprobados",
+        "pass_percentatge" = "Aprobados (%)",
+        "average_bach" = "Media Bachillerato",
+        "average_compulsory_pau" = "Media Fase Obligatoria",
         "diference_average_bach_pau" = "Diferencia Media Bach. - Media Pau"
       )
 
@@ -155,15 +163,15 @@ mod_regions_municipalities_server <- function(id) {
           !!label_var := !!sym(input$varname_2)   # then rename
         ) |>
         datatable(
-          filter     = list("none"),
-          rownames   = FALSE,
-          container  = sketch,
-          selection  = "single",
-          options    = list(
-            pageLength   = 40,
+          filter = list("none"),
+          rownames = FALSE,
+          container = sketch,
+          selection = "single",
+          options = list(
+            pageLength = 40,
             lengthChange = FALSE,
-            dom          = "tl",
-            columnDefs   = list(
+            dom = "tl",
+            columnDefs = list(
               list(className = 'comarca-name', targets = 0)
             )
           )
