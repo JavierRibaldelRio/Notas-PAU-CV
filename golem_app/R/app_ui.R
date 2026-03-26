@@ -16,7 +16,7 @@ app_ui <- function(request) {
 
       # Main UI of the page
       page_navbar(
-        title = "Análisis Notas PAU",
+        title = "Notas PAU CV",
         id = "page_selector",
 
         # Navbar settings
