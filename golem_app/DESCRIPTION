@@ -24,6 +24,8 @@ Imports:
     sf,
     stringr,
     leaflet,
+    tools,
+    purrr,
     DT,
     DBI,
     htmltools,

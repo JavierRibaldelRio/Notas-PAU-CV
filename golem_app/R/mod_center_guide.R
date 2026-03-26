@@ -85,6 +85,7 @@ center_info_card_ui <- function(center) {
   regime_map   <- c("0" = "Públic", "1" = "Concertado-Privado", "3" = "Privado")
   regime_label <- regime_map[as.character(center$type_id)]
 
+  # add info if exists data
   addr_parts <- Filter(nzchar, c(
     if (!is.na(center$address))           center$address           else "",
     if (!is.na(center$postal_code))       center$postal_code       else "",
@@ -161,25 +162,50 @@ center_chart_card_ui <- function() {
     fill = FALSE,
     card_header(icon("chart-line"), " Evolución de resultados PAU"),
 
-    selectizeInput(
-      "metric",
-      "Indicador",
-      choices = c(
-        "Nota media PAU"          = "average_compulsory_pau",
-        "Nota media Bachillerato" = "average_bach",
-        "Aprobados (%)"           = "pass_percentatge",
-        "Desv. estándar PAU"      = "standard_dev_pau",
-        "Diferencia Bach–PAU"     = "diference_average_bach_pau",
-        "Coef. variación PAU"     = "coeff_variation_pau",
-        "Matriculados"            = "enrolled_total",
-        "Presentados"             = "candidates",
-        "Aprobados"               = "pass"
+    tags$div(
+      style = "display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-start;",
+
+      tags$div(
+        style = "flex:1 1 200px;",
+        selectizeInput(
+          "metric",
+          "Indicador",
+          choices = c(
+            "Nota media PAU"          = "average_compulsory_pau",
+            "Nota media Bachillerato" = "average_bach",
+            "Aprobados (%)"           = "pass_percentatge",
+            "Desv. estándar PAU"      = "standard_dev_pau",
+            "Diferencia Bach–PAU"     = "diference_average_bach_pau",
+            "Coef. variación PAU"     = "coeff_variation_pau",
+            "Matriculados"            = "enrolled_total",
+            "Presentados"             = "candidates",
+            "Aprobados"               = "pass"
+          ),
+          selected = "average_compulsory_pau"
+        )
       ),
-      selected = "average_compulsory_pau"
+
+      # Rendered server-side so min/max come from the actual data
+      tags$div(style = "flex:1 1 200px;", uiOutput("year_range_slider"))
     ),
 
-    plotOutput("center_marks_plot", height = "400px")
+    plotOutput("center_marks_plot", height = "400px"),
+
+    br(),
+    tags$div(class = "mb-n3", DTOutput("center_marks_table"))
   )
+}
+
+# Returns a Bootstrap badge for the school regime type.
+center_regime_badge <- function(type_id) {
+  cfg <- switch(
+    as.character(type_id),
+    "0" = list(label = "Público",     class = "bg-success"),
+    "1" = list(label = "Concertado",  class = "bg-warning text-dark"),
+    "3" = list(label = "Privado",     class = "bg-danger"),
+         list(label = "Desconocido", class = "bg-secondary")
+  )
+  tags$span(class = paste("badge", cfg$class), cfg$label)
 }
 
 # Full detail page assembled from sub-components.
@@ -193,7 +219,9 @@ page_center_ui <- function(center) {
 
     card_header(
       class = "d-flex align-items-center gap-2",
-      icon("school"), tags$span(class = "noun", center$name)
+      icon("school"),
+      tags$span(class = "noun", center$name),
+      center_regime_badge(center$type_id)
     ),
 
     layout_columns(
@@ -211,11 +239,15 @@ page_center_ui <- function(center) {
     center_chart_card_ui(),
     br(),
 
-    tags$a(
-      href    = "#",
-      class   = "btn btn-outline-secondary",
-      onclick = "Shiny.setInputValue('go_to_center', '0', {priority: 'event'}); return false;",
-      icon("arrow-left"), " Volver a la guía"
+    tags$div(
+      class = "d-flex justify-content-start mt-2",
+      tags$a(
+        href    = "#",
+        class   = "btn btn-outline-primary d-flex align-items-center gap-2",
+        onclick = "Shiny.setInputValue('go_to_center', '0', {priority: 'event'}); return false;",
+        icon("arrow-left"),
+        tags$span("Volver a la guía de centros")
+      )
     )
   )
 }
@@ -268,6 +300,7 @@ build_marks_plot <- function(marks_df, nearest_df, global_df,
     }
   }
 
+  legend_labels      <- toTitleCase(sources_ord)
   df_combined        <- do.call(rbind, dfs)
   df_combined$source <- factor(df_combined$source, levels = sources_ord)
   names(color_map)   <- sources_ord
@@ -275,42 +308,64 @@ build_marks_plot <- function(marks_df, nearest_df, global_df,
   ggplot(df_combined, aes(x = year, y = .data[[metric]], color = source, group = source)) +
     geom_line(linewidth = 1) +
     geom_point(size = 3) +
-    scale_color_manual(values = color_map) +
+    scale_color_manual(values = color_map, labels = legend_labels) +
     labs(x = "Año", y = NULL, color = NULL) +
+    scale_x_continuous(
+      breaks = seq(
+        min(df_combined$year, na.rm = TRUE),
+        max(df_combined$year, na.rm = TRUE),
+        by = 2
+      )
+    ) +
     theme_base()
 }
 
 # Builds the four KPI value boxes from the latest-year row.
+# prev may be NULL when there is only one year of data.
 # Pure function — no reactivity.
-build_kpi_boxes <- function(latest) {
+build_kpi_boxes <- function(latest, prev = NULL) {
   fmt <- function(x, digits = 2) {
     if (is.null(x) || is.na(x)) return("—")
     formatC(round(x, digits), format = "f", digits = digits)
+  }
+
+  # Returns a trend icon comparing current vs previous value.
+  # higher_is_better controls whether an increase is shown in green or red.
+  trend_icon <- function(cur, old, higher_is_better = TRUE) {
+    if (is.null(old) || is.na(old) || is.null(cur) || is.na(cur)) return(NULL)
+    if (cur > old) icon(if (higher_is_better) "arrow-trend-up"   else "arrow-trend-down")
+    else if (cur < old) icon(if (higher_is_better) "arrow-trend-down" else "arrow-trend-up")
+    else icon("minus")
   }
 
   layout_columns(
     col_widths = c(3, 3, 3, 3),
     value_box(
       title    = paste("Nota media PAU", latest$year),
-      value    = fmt(latest$average_compulsory_pau),
+      value    = tagList(fmt(latest$average_compulsory_pau),
+                         trend_icon(latest$average_compulsory_pau, prev$average_compulsory_pau)),
       showcase = icon("graduation-cap"),
       theme    = "primary"
     ),
     value_box(
       title    = paste("Aprobados", latest$year),
-      value    = paste0(fmt(latest$pass_percentatge, 1), " %"),
+      value    = tagList(paste0(fmt(latest$pass_percentatge, 1), " %"),
+                         trend_icon(latest$pass_percentatge, prev$pass_percentatge)),
       showcase = icon("circle-check"),
       theme    = "success"
     ),
     value_box(
       title    = paste("Diferencia Bach–PAU", latest$year),
-      value    = fmt(latest$diference_average_bach_pau),
-      showcase = icon("arrow-trend-down"),
+      value    = tagList(fmt(latest$diference_average_bach_pau),
+                         trend_icon(latest$diference_average_bach_pau, prev$diference_average_bach_pau,
+                                    higher_is_better = FALSE)),
+      showcase = icon("scale-unbalanced"),
       theme    = "warning"
     ),
     value_box(
       title    = paste("Presentados", latest$year),
-      value    = latest$candidates %||% "—",
+      value    = tagList(latest$candidates %||% "—",
+                         trend_icon(latest$candidates, prev$candidates)),
       showcase = icon("users"),
       theme    = "secondary"
     )
@@ -396,6 +451,7 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
 
   # ── Reactives ──────────────────────────────────────────────────────────────
 
+  # Get data of center
   center_data <- reactive({
     id <- center_id()
     if (is.null(id) || id == "0") return(NULL)
@@ -414,6 +470,7 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
     row[1, ]
   })
 
+  # get data of the center
   marks_data <- reactive({
     center <- req(center_data())
     dbGetQuery(
@@ -432,6 +489,7 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
     center <- req(center_data())
     if (is.na(center$latitude) || is.na(center$longitude)) return(NULL)
 
+    # get shorter distance centers
     nc <- dbGetQuery(
       pool,
       "SELECT id, name FROM high_schools
@@ -444,11 +502,14 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
     )
     if (nrow(nc) == 0) return(NULL)
 
+    
     placeholders <- paste(rep("?", nrow(nc)), collapse = ", ")
+    
+    # get data of nearest centers
     dbGetQuery(
       pool,
       sprintf(
-        "SELECT hsm.year, hs.name AS source,
+        "SELECT hsm.year, hs.id AS source_id, hs.name AS source,
                 hsm.enrolled_total, hsm.candidates, hsm.pass,
                 hsm.pass_percentatge, hsm.average_bach,
                 hsm.average_compulsory_pau, hsm.standard_dev_pau,
@@ -476,21 +537,80 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
 
   # ── Outputs ────────────────────────────────────────────────────────────────
 
+  # Year range slider — built from the actual years available for this center
+  output$year_range_slider <- renderUI({
+    years <- marks_data()$year
+    req(length(years) > 0)
+    sliderInput(
+      "year_range",
+      "Rango de años",
+      min   = min(years),
+      max   = max(years),
+      value = c(min(years), max(years)),
+      step  = 1,
+      sep   = ""
+    )
+  })
+
   output$center_marks_plot <- renderPlot({
+    req(length(input$year_range) == 2)
+    yr <- input$year_range
+
     build_marks_plot(
-      marks_df    = marks_data(),
-      nearest_df  = nearest_marks(),
-      global_df   = global_marks(),
+      marks_df    = marks_data()   |> filter(year >= yr[1], year <= yr[2]),
+      nearest_df  = nearest_marks() |> (\(nd) if (!is.null(nd)) filter(nd, year >= yr[1], year <= yr[2]) else NULL)(),
+      global_df   = global_marks()  |> filter(year >= yr[1], year <= yr[2]),
       center_name = req(center_data())$name,
       metric      = req(input$metric),
       theme_palette
     )
   })
 
+  output$center_marks_table <- renderDT({
+    req(length(input$year_range) == 2, input$metric)
+    yr     <- input$year_range
+    metric <- input$metric
+
+    center <- req(center_data())
+
+    list(
+      marks_data()   |> mutate(source_id = center$id,  source = center$name),
+      nearest_marks(),
+      global_marks() |> mutate(source_id = NA_integer_)
+    ) |>
+      compact() |>
+      bind_rows() |>
+      filter(year >= yr[1], year <= yr[2]) |>
+      select(source_id, source, year, value = all_of(metric)) |>
+      pivot_wider(names_from = year, values_from = value) |>
+      mutate(
+        across(where(is.numeric), \(x) round(x, 2)),
+        Centro = case_when(
+          source_id == center$id ~
+            paste0('<strong class="noun">', source, "</strong>"),
+          is.na(source_id) ~
+            paste0('<span class="noun">', source, "</span>"),
+          .default = sprintf(
+            "<a href='#' class='noun' onclick=\"Shiny.setInputValue('go_to_center', '%s', {priority: 'event'}); return false;\">%s</a>",
+            source_id, source
+          )
+        )
+      ) |>
+      select(-source, -source_id) |>
+      relocate(Centro) |>
+      datatable(
+        rownames = FALSE,
+        escape   = FALSE,
+        options  = list(dom = "t", ordering = TRUE)
+      )
+  })
+
   output$center_kpi_boxes <- renderUI({
-    df <- marks_data()
+    df <- marks_data() |> arrange(year)
     if (nrow(df) == 0) return(NULL)
-    build_kpi_boxes(df[which.max(df$year), ])
+    latest <- df[nrow(df), ]
+    prev   <- if (nrow(df) >= 2) df[nrow(df) - 1, ] else NULL
+    build_kpi_boxes(latest, prev)
   })
 
   output$center_map <- renderLeaflet({

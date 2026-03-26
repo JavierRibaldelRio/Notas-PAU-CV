@@ -6,7 +6,9 @@
 #' @import bslib
 #' @import glue
 #' @import leaflet
+#' @import purrr
 #' @import DBI
+#' @import tools
 #' @import RSQLite
 #' @import stats
 #' @import pool
