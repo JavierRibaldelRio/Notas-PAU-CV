@@ -4,7 +4,7 @@
 #'
 #' @param id,label,selected Internal parameters for {shiny}.
 #'
-#' @noRd
+#' 
 #'
 #' @importFrom shiny NS tagList
 mod_mean_year_selector_ui <- function(
@@ -44,7 +44,7 @@ mod_mean_year_selector_ui <- function(
 
 #' mean_year_selector Server Functions
 #' Returns the year selected of 0 if its global
-#' @noRd
+#' 
 mod_mean_year_selector_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     # On change at select, select its radio-button

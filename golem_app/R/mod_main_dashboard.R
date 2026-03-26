@@ -14,35 +14,35 @@ mod_main_dashboard_ui <- function(id) {
     # Main plots section
     layout_columns(
       layout_column_wrap(
-
         navset_card_tab(
-          title = "Rendimiento académico",
+          title="Evolución y perfil",
           full_screen = TRUE,
-
           nav_panel(
-            "Distribución de las medias",
-            plotOutput(outputId = ns("boxplot_diff_avg"))
+            "Evo. académica",
+            plotOutput(outputId = ns("candidates_over_years"))
           ),
           nav_panel(
-           "Diferencia PAU vs. Bach.",
-           plotOutput(outputId = ns("diff_average_bach_pau")) 
-          ),
-          nav_panel(
-            "Variación diferencia",
-            plotOutput(outputId = ns("diff_tendence_smooth"))
+            "Perfil del Presentado",
+            plotOutput(outputId = ns("student_profile"))
           )
         ),
+
         layout_columns(
           navset_card_tab(
-            title="Evolución y perfil",
+            title = "Rendimiento académico",
             full_screen = TRUE,
+  
             nav_panel(
-              "Evo. académica",
-              plotOutput(outputId = ns("candidates_over_years"))
+              "Distribución de las medias",
+              plotOutput(outputId = ns("boxplot_diff_avg"))
             ),
             nav_panel(
-              "Perfil del Presentado",
-              plotOutput(outputId = ns("student_profile"))
+             "Diferencia PAU vs. Bach.",
+             plotOutput(outputId = ns("diff_average_bach_pau")) 
+            ),
+            nav_panel(
+              "Variación diferencia",
+              plotOutput(outputId = ns("diff_tendence_smooth"))
             )
           ),
           navset_card_tab(
@@ -61,7 +61,7 @@ mod_main_dashboard_ui <- function(id) {
         width = 1,
         heights_equal = "row"
       ),
-      card()
+      #card()
     )
   )     
 }
@@ -418,8 +418,8 @@ mod_main_dashboard_server <- function(id, pool){
     )
 
     # Get theme colors
-    theme <- bslib::bs_current_theme()
-    colors <- bslib::bs_get_variables(
+    theme <- bs_current_theme()
+    colors <- bs_get_variables(
       theme,
       varnames = c("primary", "secondary", "success", "danger",  "warning", "info", "dark", "default")
     )

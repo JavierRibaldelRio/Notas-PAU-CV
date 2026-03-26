@@ -16,8 +16,8 @@ app_ui <- function(request) {
 
       # Main UI of the page
       page_navbar(
-        title = "Análisis Notas PAU",
-        id = "page",
+        title = "Notas PAU CV",
+        id = "page_selector",
 
         # Navbar settings
         navbar_options = navbar_options(
@@ -36,44 +36,48 @@ app_ui <- function(request) {
 
         # Page 1 subjects
         nav_panel(
-          value="subjects",
+          value = "subjects",
           "Asignaturas",
-          
+
           mod_subjects_page_ui("subjects_page_1", 2024)
         ),
 
-        # # Menu of regions
-        # nav_menu(
-        #   "Regiones",
-        #   nav_panel(
-        #     "Provincia",
-        #     "1"
-        #   ),
-        #   nav_panel(
-        #     "Comarca",
-        #     "ASDF"
-        #   ),
-        #   nav_panel(
-        #     "Municipio",
-        #     "ASDF - Desde UI"
-        #   )
-        # ),
+        # Menu of regions
+        nav_menu(
+          "Regiones",
+          # nav_panel(
+          #   "Provincia",
+          #   value = "regions-provincia",
+          #   "WIP"
+          # ),
+          nav_panel(
+            "Comarca",
+            value = "regions-comarca",
+            mod_map_region_ui("map_region_1")
+          ),
+          nav_panel(
+            "Municipio",
+            value = "regions-municipio",
+            mod_regions_municipalities_ui("regions_municipalities_1")
+          )
+        ),
 
-        # # Menu of centers
-        # nav_menu(
-        #   "Centros",
-        #   nav_panel(
-        #     "Centros",
-        #     "1"
-        #   ),
-        #   nav_panel(
-        #     "Buscador",
-        #     "ASDF"
-        #   ),
-        # ),
+        nav_panel(
+          "Guía de centros",
+          value = "centros",
+          mod_center_guide_ui("center_guide_1")
+        ),
+
+        nav_panel(
+          "Mapa de centros",
+          value = "centros-mapa",
+          mod_map_centers_ui("map_centers_1")
+        ),
 
         # About us
-        nav_panel("Sobre nosotros",value="about" ,"Pau y Javier"),
+        nav_panel("Sobre nosotros", value = "about",
+          mod_about_page_ui("about_page")
+        ),
       )
     )
   )

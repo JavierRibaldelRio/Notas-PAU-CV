@@ -3,20 +3,30 @@ title: "Regresión Notas PAU"
 author:
   - name: Javier Ribal del Río
   - name: Pau Minguet Micó
+format:
+  pdf:
+    toc: true
+    toc-depth: 3
+    number-sections: true
 ---
 
+## Información previa
 
-Cargar librerías
+Página web: [https://ribal21-notas-pau-cv.share.connect.posit.cloud](https://ribal21-notas-pau-cv.share.connect.posit.cloud)
+
+Código (repositorio): [https://github.com/JavierRibaldelRio/Notas-PAU-CV](https://github.com/JavierRibaldelRio/Notas-PAU-CV)
+
+
 ```{r}
+#| message: false
+#| include: false
 library(tidyverse)
 library(DBI)
 library(broom)
 library(lmtest)
 library(sandwich)
-```
 
-Cargar base de datos
-```{r}
+# Data base
 create_sqlite_con_precompute <- function(
   db_path = "data/notas-pau.db",
   flags = RSQLite::SQLITE_RO,
@@ -52,31 +62,276 @@ con <- create_sqlite_con_precompute()
 ```
 
 
-Para cada centro educativo disponemos de 
+## Estructura de la base de datos (SQLite) / Descripción del *dataframe*
 
-- Código postal, `postal_code`
-- Datos de ubicación
-- Régimen (público, concertado o privado)
-- Otros datos que no afectan a la variable explicativa como la dirección, o el email del centro...
+Los datos utilizados en este proyecto se almacenan en una **base de datos relacional SQLite**.  
+SQLite es un motor de base de datos ligero basado en archivos que no requiere servidor, lo que lo hace especialmente adecuado para proyectos de análisis de datos, investigación reproducible y su integración con herramientas como **R**.
+
+La base de datos contiene información relacionada con los **resultados de las pruebas de acceso a la universidad (PAU)**, las **asignaturas**, los **centros educativos** y su **contexto territorial** (municipios, provincias y regiones).  
+La estructura sigue un diseño relacional normalizado donde las entidades se separan en distintas tablas y se conectan mediante **claves foráneas (foreign keys)**.
+
+La base de datos se ha generado extrayendo datos de los PDF con las estadísiticas oficiales de la PAU, los datos relativos a los centros de la guia de centros de la consellería de educación (datos ya no disponibles). Los datos cartográficos y territoriales provienen del CNIG o del Instituto Cartográfico Valenciano
+
+### Resumen rápido de la estructura de datos
+
+- **Base de datos:** SQLite relacional diseñada para analizar los **resultados de la PAU** en la Comunidad Valenciana.
+
+- **Nivel territorial:**
+  - `regions` → comarcas o regiones.
+  - `provinces` → provincias.
+  - `municipalities` → municipios.
+  - Permiten geolocalizar los centros educativos.
+
+- **Centros educativos:**
+  - `high_schools` → información administrativa y geográfica de cada centro.
+  - `high_school_types` → clasificación del centro (público, concertado, privado).
+
+- **Resultados por centro:**
+  - `high_school_marks` → resultados agregados de la PAU por **centro, año y convocatoria**.
+  - Incluye:
+    - número de estudiantes,
+    - porcentaje de aprobados,
+    - medias y desviaciones estándar,
+    - comparación entre **nota de bachillerato y nota de PAU**.
+
+- **Resultados por asignatura:**
+  - `subjects` → catálogo de asignaturas.
+  - `marks` → resultados agregados por **asignatura, año y convocatoria**.
+
+- **Resultados agregados del sistema:**
+  - `global_results` → estadísticas globales del sistema educativo para cada año y convocatoria.
+  - `high_school_types_results` → resultados agregados **por tipo de centro**.
+
+- **Nivel de análisis posible:**
+  - por **asignatura**,
+  - por **centro educativo**,
+  - por **tipo de centro**,
+  - por **territorio**,
+  - y a **nivel global del sistema educativo**.
 
 
-Para cada año dispontemos de cada centro las siguientes observaciones
 
-- Variable identificativas
-  - Año
-  - Convocatoria (ordinaria, global y extraordinaria)
+---
 
-- Variables
-  - Matriculados
-  - Presentados
-  - Aprobados
-  - Nota media de Bachillerato
-  - Desviación típica de la nota Bachillerato
+### `subjects`
+
+Esta tabla contiene el catálogo de **asignaturas evaluadas en la PAU**.
+
+| Campo | Descripción |
+|------|-------------|
+| `id` | Identificador único de la asignatura (clave primaria). |
+| `code` | Código oficial de la asignatura (máximo 6 caracteres). |
+| `name` | Nombre oficial de la asignatura. |
+| `other_names` | Otros nombres o denominaciones alternativas de la asignatura. |
+
+---
+
+### `marks`
+
+Esta tabla almacena **estadísticas agregadas de resultados por asignatura**, año y convocatoria.
+
+| Campo | Descripción |
+|------|-------------|
+| `id` | Clave primaria. |
+| `subject_id` | Identificador de la asignatura (`subjects.id`). |
+| `year` | Año de la convocatoria. |
+| `call` | Convocatoria del examen. |
+| `enrolled_total` | Número total de estudiantes matriculados. |
+| `candidates` | Número de estudiantes que finalmente se presentan al examen. |
+| `pass` | Número de estudiantes que aprueban. |
+| `pass_percentatge` | Porcentaje de aprobados. |
+| `average` | Nota media obtenida. |
+| `standard_dev` | Desviación estándar de las calificaciones. |
+| `candidates_compulsory` | Número de candidatos en la fase obligatoria. |
+| `pass_compulsory` | Número de aprobados en la fase obligatoria. |
+| `candidates_optional` | Número de candidatos en la fase opcional. |
+| `pass_optional` | Número de aprobados en la fase opcional. |
+| `coefficient_variation` | Coeficiente de variación de las calificaciones. |
+
+---
+
+### `high_school_types`
+
+Tabla que define los **tipos de centros educativos**.
+
+| Campo | Descripción |
+|------|-------------|
+| `id` | Identificador del tipo de centro (clave primaria). |
+| `type` | Nombre del tipo de centro (por ejemplo, público, concertado o privado). |
+
+---
+
+### `provinces`
+
+Tabla que contiene las **provincias**.
+
+| Campo | Descripción |
+|------|-------------|
+| `id` | Identificador de la provincia. |
+| `name` | Nombre de la provincia. |
+| `provincial_capital` | Municipio que actúa como capital provincial. |
+
+---
+
+### `regions`
+
+Tabla que contiene las **regiones o comarcas**.
+
+| Campo | Descripción |
+|------|-------------|
+| `id` | Identificador de la región. |
+| `name` | Nombre de la región. |
+| `province` | Provincia a la que pertenece. |
+| `region_code` | Código identificador de la región. |
+
+---
+
+### `municipalities`
+
+Tabla que almacena los **municipios**.
+
+| Campo | Descripción |
+|------|-------------|
+| `id` | Identificador del municipio. |
+| `ine_code` | Código oficial del INE. |
+| `name` | Nombre del municipio. |
+| `other_names` | Otros nombres o denominaciones del municipio. |
+| `region` | Región o comarca a la que pertenece. |
+| `province` | Provincia a la que pertenece. |
+
+---
+
+### `high_schools`
+
+Esta tabla contiene información sobre los **centros de educación secundaria**.
+
+| Campo | Descripción |
+|------|-------------|
+| `id` | Identificador único del centro. |
+| `code` | Código identificador del centro. |
+| `name` | Nombre del centro educativo. |
+| `type_id` | Tipo de centro (`high_school_types.id`). |
+| `cif` | CIF o identificador fiscal del centro. |
+| `address` | Dirección del centro. |
+| `postal_code` | Código postal. |
+| `municipality_id` | Municipio donde se encuentra el centro. |
+| `latitude` | Latitud geográfica. |
+| `longitude` | Longitud geográfica. |
+| `email` | Correo electrónico del centro. |
+| `phone_number` | Teléfono de contacto. |
+| `fax` | Número de fax. |
+| `website` | Página web del centro. |
+| `owner` | Titularidad del centro. |
+| `image` | Imagen asociada al centro (almacenada como BLOB). |
+
+---
+
+### `high_school_marks`
+
+Esta tabla recoge **resultados agregados de la PAU a nivel de centro educativo**.
+
+| Campo | Descripción |
+|------|-------------|
+| `id` | Clave primaria. |
+| `high_school_id` | Centro educativo al que corresponden los datos. |
+| `year` | Año de la convocatoria. |
+| `call` | Convocatoria del examen. |
+| `enrolled_total` | Estudiantes matriculados. |
+| `candidates` | Estudiantes presentados. |
+| `pass` | Estudiantes aprobados. |
+| `pass_percentatge` | Porcentaje de aprobados. |
+| `average_bach` | Nota media del bachillerato. |
+| `standard_dev_bach` | Desviación estándar del bachillerato. |
+| `average_compulsory_pau` | Nota media de la fase obligatoria de la PAU. |
+| `standard_dev_pau` | Desviación estándar de la fase obligatoria. |
+| `diference_average_bach_pau` | Diferencia entre la media de bachillerato y la media de la PAU. |
+| `coeff_variation_bach` | Coeficiente de variación del bachillerato. |
+| `coeff_variation_pau` | Coeficiente de variación de la PAU. |
+
+---
+
+### `global_results`
+
+Esta tabla recoge **estadísticas agregadas del conjunto del sistema educativo** para cada año y convocatoria.
+
+| Campo | Descripción |
+|------|-------------|
+| `id` | Identificador del registro (clave primaria). |
+| `year` | Año de la convocatoria. |
+| `call` | Convocatoria del examen. |
+| `enrolled` | Número total de estudiantes matriculados. |
+| `candidates` | Número total de estudiantes presentados. |
+| `pass` | Número total de estudiantes aprobados. |
+| `pass_percentage` | Porcentaje total de aprobados. |
+| `candidates_m` | Número de candidatos hombres. |
+| `candidates_w` | Número de candidatos mujeres. |
+| `pass_percentage_m` | Porcentaje de aprobados hombres. |
+| `pass_percentage_w` | Porcentaje de aprobados mujeres. |
+| `average_bach` | Nota media de bachillerato. |
+| `standard_dev_bach` | Desviación estándar de bachillerato. |
+| `average_pau` | Nota media de la PAU. |
+| `standard_dev_pau` | Desviación estándar de la PAU. |
+| `average_nau` | Nota media de acceso a la universidad (NAU). |
+| `standard_dev_nau` | Desviación estándar de la NAU. |
+| `final_average_pass` | Nota media final de los estudiantes aprobados. |
+| `exclusive_candidates_general` | Candidatos que solo se presentan a la fase general. |
+| `exclusive_candidates_especific` | Candidatos que solo se presentan a la fase específica. |
+| `candidates_both` | Candidatos que se presentan a ambas fases. |
+| `fp_candidates_especific` | Estudiantes procedentes de formación profesional que se presentan a la fase específica. |
+
+---
+
+### `high_school_types_results`
+
+Esta tabla contiene **resultados agregados por tipo de centro educativo**.
+
+| Campo | Descripción |
+|------|-------------|
+| `id` | Identificador del registro. |
+| `year` | Año de la convocatoria. |
+| `call` | Convocatoria del examen. |
+| `type_id` | Tipo de centro educativo (`high_school_types.id`). |
+| `enrolled` | Estudiantes matriculados. |
+| `candidates` | Estudiantes presentados. |
+| `pass` | Estudiantes aprobados. |
+| `pass_percentage` | Porcentaje de aprobados. |
+| `candidates_m` | Candidatos hombres. |
+| `candidates_w` | Candidatos mujeres. |
+| `pass_percentage_m` | Porcentaje de aprobados hombres. |
+| `pass_percentage_w` | Porcentaje de aprobados mujeres. |
+| `average_bach` | Nota media de bachillerato. |
+| `standard_dev_bach` | Desviación estándar de bachillerato. |
+| `average_pau` | Nota media de PAU. |
+| `standard_dev_pau` | Desviación estándar de PAU. |
+| `average_nau` | Nota media NAU. |
+| `standard_dev_nau` | Desviación estándar NAU. |
+| `final_average_pass` | Nota media final de aprobados. |
+| `exclusive_candidates_general` | Candidatos solo en fase general. |
+| `exclusive_candidates_especific` | Candidatos solo en fase específica. |
+| `candidates_both` | Candidatos en ambas fases. |
+| `fp_candidates_especific` | Candidatos de FP en fase específica. |
+
+---
+
+Esta estructura permite analizar los resultados de la PAU a distintos niveles:
+
+- por **asignatura**,  
+- por **centro educativo**,  
+- por **tipo de centro**,  
+- por **territorio (municipio, provincia o región)**,  
+- y a **nivel global del sistema educativo**.
 
 
-La variable a predecir es: la nota media de la fase obligatoria de la PAU por centro
 
-$$\mathrm{PAU_it} = \beta_0 + \beta_1\mathrm{Bach_{it}} + \epsilon_{it} $$
+## Modelos de Regresión
+
+La variable a predecir es: la **nota media de la fase obligatoria de la PAU por centro**
+
+### Modelo 1
+
+Única variable explicativa nota media del centro en bachillerato
+
+$$\mathrm{PAU_it} = \beta_0 + \beta_1\mathrm{Bach_{it}} + \epsilon_{it}$$
 ```{r}
 # realizar la regresión
 data1 <- dbGetQuery(
@@ -99,8 +354,11 @@ glance(modelo_1)
 2. R-squared: 0.3909, no se acerca a 1 por lo que podría ser un modelo mejorable
 3. Mirando el p-valor es inferior a 0.005 por lo que, como era esperable es estadísticamente significativo.
 
+#### Diagrama de Dispersión
 
 ```{r}
+#| message: false
+
 data1|>
   ggplot(aes(y=average_compulsory_pau, x=average_bach)) +
   geom_point(alpha = 0.3) +
@@ -110,12 +368,12 @@ data1|>
 ```
 
 
-## Modelo 2
+### Modelo 2
 
-$$\mathrm{PAU_it} = \beta_0 + \beta_1\mathrm{Bach-mean_{it}} + \beta_2\mathrm{Bach-sd_{it}}+ \epsilon_{it} $$
+$$\mathrm{PAU_it} = \beta_0 + \beta_1\mathrm{Bach\_mean_{it}} + \beta_2\mathrm{Bach\_sd_{it}}+ \epsilon_{it} $$
 
 
-Incorporamos la desviación de la nota media de bachillerato a nuestra regresión
+Incorporamos la desviación de la nota media de bachillerato a nuestra regresión. 
 
 ```{r}
 modelo_2 <- data1 |>
@@ -129,12 +387,14 @@ glance(modelo_2)
 2. $R^2$ aumenta en 0.005 (=0.395)
 
 
-**ChatGPT** destaca el hecho de que sea positivo, porque el esperaba que fuese negativo
+**ChatGPT** destaca el hecho de que sea positivo, porque el esperaba que fuese negativo. ??
 
 
 ### Modelo 3
 
-Incorporamos el factor de régimen. Lo introducimos como *variables binarias* es decir dos variable y hacer combinaciones. Por ejemplo, 00 → público, 01 → privado, 10 → concertado
+Incorporamos el factor de régimen. Lo introducimos como *variables binarias* es decir dos variable y hacer combinaciones. Por ejemplo, 00 → público, 01 → privado, 10 → concertado.
+
+> ¿Qué pasa con el p-valor del público?
 
 ```{r}
 
@@ -153,7 +413,7 @@ glance(modelo_3)
 > El régimen del centro está asociado de forma estadísticamente significativa con la nota media de la PAU, una vez controladas la media y la dispersión de bachillerato. Sin embargo, su contribución adicional al poder explicativo global del modelo es reducida.
 
 
-## Matriz de correlación de algunas de las variables
+### Matriz de correlación de algunas de las variables
 
 
 ```{r}
@@ -172,12 +432,12 @@ data1 |>
 ```
 
 
-A pesar de que candidatos no presenta mucha relación con average_compulsory_pau la podemos introducir en el model para ver si es estadísticamente 
+A pesar de que candidatos no presenta mucha relación con average_compulsory_pau la podemos introducir en el model para ver si es estadísticamente significativa
 
 
-## Modelo 4
+### Modelo 4
 
-Introducimos los candidatos
+Introducimos el número de candidatos
 ```{r}
 modelo_4 <- data1 |> 
   mutate(regime = as.factor(type_id)) |> 
@@ -196,6 +456,13 @@ El valor de $R^2$ asciende hasta 0.399
 
 
 ### Modelo 4 Estandarizado
+
+Escalando las variables.
+
+
+$$
+z_i = \frac{x_i - \bar{x}}{s_x}
+$$
 
 ```{r}
 modelo_4_std <- data1 |> 
@@ -218,9 +485,9 @@ tidy(modelo_4_std)
 ```
 
 
-## Modelo 5
+### Modelo 5
 
-
+Introducción del segundo grado en la nota media de bachillerato.
 
 ```{r}
 modelo_5 <- data1 |>
@@ -235,10 +502,12 @@ tidy(modelo_5)
 glance(modelo_5)
 ```
 
+No es significativo
 
-## Modelo 6
 
-Introducimos el factor year
+### Modelo 6
+
+Introducimos el factor año y el factor centro
 
 
 ```{r}
@@ -252,9 +521,25 @@ modelo_6 <- data1 |>
     data = _
   )
 
-tidy(modelo_6,)
+tidy(modelo_6)
 glance(modelo_6)
 ```
+
+
+
+> ¿Tiene sentido introducir el factor centro? ¿Nos limita la posibilidad de introducir el factor renta?
+
+> ¿Qué mas factores podemos introducir?
+
+> - Renta
+
+> - Datos electorales
+
+> - Nivel educativo medio de la zona
+
+> - Valenciano/Castellano
+
+>  Problema de obtención temporal de los distintos datos
 
 ## Comprobaciones
 
@@ -262,6 +547,9 @@ Para hacer todas las comprobaciones ahora nos centraremos en el `modelo_4`.
 Primero vamos a hacer unos gráficos de diagnóstico.
 
 ```{r}
+#| fig-width: 8
+#| fig-height: 8
+#| fig-align: center
 par(mfrow = c(2, 2))
 plot(modelo_4)
 ```
@@ -309,3 +597,82 @@ La presencia de heterocedasticidad implica que los errores estándar clásicos d
 Tras esta corrección, todas las variables incluidas en el modelo continúan siendo estadísticamente significativas. En particular, la nota media de Bachillerato del centro sigue siendo la variable con mayor capacidad explicativa, con un coeficiente estimado de 0.773. Asimismo, la desviación típica de Bachillerato, el régimen del centro y el número de candidatos mantienen una asociación estadísticamente significativa con la nota media de la fase obligatoria de la PAU.
 
 No podemos asumir que los residuos sigan una distribución normal estrícta dadas las claras desviaciones en el gráfico Q-Q anterior. Si la muestra hubiera sido menor, hubieramos utilizado el test de Shapiro-Wilk (`shapiro.test`), pero en R tiene un límite de muestra de 5000.
+
+## Clustering
+
+```{r}
+marks <- dbGetQuery(
+  con,
+  "SELECT * FROM marks JOIN subjects ON subject_id = subjects.id"
+)
+
+dbDisconnect(con)
+
+# preapare data to cluster
+clustering_base <- marks |>
+  select(-id) |>
+  filter(call == 2) |>
+  group_by(name) |>
+  summarise(
+    candidates_total = sum(candidates, na.rm = TRUE),
+    candidates_total_log = log(candidates_total),
+    pass_total = sum(pass, na.rm = TRUE),
+    pass_rate_global = pass_total / candidates_total,
+    avg_sd_time = sd(average, na.rm = TRUE), # Desviación estándar de la media
+    avg_global_weighted = sum(average * candidates, na.rm = TRUE) /
+      candidates_total,
+    optional_share = sum(candidates_optional, na.rm = TRUE) / candidates_total,
+    average = mean(average),
+    n_years = n(),
+
+    .groups = "drop"
+  ) |>
+  filter(n_years > 1)
+
+# data to do the clustering
+clustering_matrix <- clustering_base |>
+  select(
+    candidates_total_log,
+    pass_rate_global,
+    avg_sd_time,
+    avg_global_weighted,
+    optional_share
+  ) |>
+  scale() # z-s
+
+# Clustering
+set.seed(123)
+km_5 <- kmeans(clustering_matrix, centers = 5, nstart = 25)
+
+clustering_base <- clustering_base |>
+  mutate(cluster_k5 = factor(km_5$cluster))
+
+# output of the cluster
+clustering_base |>
+  ggplot(
+    aes(
+      x = optional_share,
+      y = avg_global_weighted,
+      size = candidates_total_log,
+      color = factor(cluster_k5)
+    )
+  ) +
+  geom_point(alpha = 0.8) +
+  labs(
+    x = "Optional share",
+    y = "Weighted average grade",
+    size = "Log(total candidates)",
+    color = "Cluster"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+clustering_base |>
+  select(name, cluster_k5) |>
+  arrange(cluster_k5, name) |>
+  knitr::kable(
+    col.names = c("Asignatura", "Cluster")
+  )
+```

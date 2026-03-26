@@ -1,0 +1,161 @@
+.about-wrapper {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem 1rem;
+  font-family: inherit;
+}
+
+.about-wrapper,
+.about-wrapper h2,
+.about-wrapper h3,
+.about-wrapper h4,
+.about-wrapper p,
+.about-wrapper ul,
+.about-wrapper li,
+.about-wrapper a,
+.about-wrapper strong,
+.about-wrapper span {
+  font-family: inherit;
+}
+
+.about-hero {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 0.75rem;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.about-hero h2 {
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+}
+
+.about-lead {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  color: #495057;
+}
+
+.about-text {
+  color: #6c757d;
+  margin-bottom: 0;
+  margin-top: 1rem;
+}
+
+.about-authors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0 0.5rem 0;
+}
+
+.about-author {
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 0.65rem;
+  padding: 0.9rem 1rem;
+  min-width: 260px;
+  flex: 1 1 320px;
+}
+
+.about-author h4 {
+  margin: 0 0 0.35rem 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.about-author p {
+  margin: 0;
+  color: #495057;
+}
+
+.about-card {
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.25rem 1rem 1.25rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.about-card h3 {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  color: var(--bs-primary);
+}
+
+.about-card p,
+.about-card li {
+  color: #495057;
+  line-height: 1.6;
+  font-size: 1rem;
+}
+
+.about-card ul {
+  padding-left: 1.2rem;
+  margin-bottom: 0;
+}
+
+.about-project-card {
+   margin-top: 1rem;
+}
+
+.project-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.project-section {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 0.65rem;
+  padding: 1rem;
+}
+
+.project-section h4 {
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #212529;
+}
+
+.project-section p:last-child {
+  margin-bottom: 0;
+}
+
+.about-team-card {
+  margin-bottom: 1rem;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.team-member {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 0.65rem;
+  padding: 1rem;
+}
+
+.team-member h4 {
+  margin-bottom: 0.75rem;
+  font-size: 1.05rem;
+}
+
+.team-member p {
+  margin-bottom: 0.45rem;
+}
+
+.team-member a,
+.project-section a {
+  text-decoration: none;
+}
+
+.team-member a:hover,
+.project-section a:hover {
+  text-decoration: underline;
+}
