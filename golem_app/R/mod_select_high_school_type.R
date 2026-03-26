@@ -12,7 +12,7 @@ mod_select_high_school_type_ui <- function(id, title = "Régimen educativo", sel
   selectInput(
     ns("select_type"),
     title,
-    selected = selected,
+    selected = "Todos",
     selectize = TRUE,
     list("Todos" = 3 ,"Público" = 0, "Concertado" = 1, "Privado" = 2)
   )
