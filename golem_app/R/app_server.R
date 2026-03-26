@@ -36,6 +36,7 @@ app_server <- function(input, output, session) {
   # Database
   pool <- golem::get_golem_options("pool")
 
+  # al things related to routes wheremoved to this module
   mod_center_guide_server("center_guide_1", input, output, session, pool)
 
   # pagina principal y
