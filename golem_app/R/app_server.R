@@ -45,6 +45,7 @@ app_server <- function(input, output, session) {
 
   # Maps
   mod_map_region_server("map_region_1", pool)
+  mod_map_centers_server("map_centers_1", pool)
   
   # Municipalities
   mod_regions_municipalities_server("regions_municipalities_1")

@@ -62,24 +62,19 @@ app_ui <- function(request) {
           )
         ),
 
-        nav_panel(
+        nav_menu(
           "Centros",
-          value="centros",
-          mod_center_guide_ui("center_guide_1")
+          nav_panel(
+            "Guía",
+            value = "centros",
+            mod_center_guide_ui("center_guide_1")
+          ),
+          nav_panel(
+            "Mapa",
+            value = "centros-mapa",
+            mod_map_centers_ui("map_centers_1")
+          )
         ),
-
-        # # Menu of centers
-        # nav_menu(
-        #   "Centros",
-        #   nav_panel(
-        #     "Centros",
-        #     "1"
-        #   ),
-        #   nav_panel(
-        #     "Buscador",
-        #     "ASDF"
-        #   ),
-        # ),
 
         # About us
         nav_panel("Sobre nosotros", value = "about",
