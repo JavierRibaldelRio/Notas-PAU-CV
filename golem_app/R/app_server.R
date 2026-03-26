@@ -5,6 +5,7 @@
 #' @import shiny
 #' @import bslib
 #' @import glue
+#' @import leaflet
 #' @import DBI
 #' @import RSQLite
 #' @import stats

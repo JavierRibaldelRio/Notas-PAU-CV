@@ -20,10 +20,11 @@ mod_center_guide_ui <- function(id) {
 # ── UI: home ──────────────────────────────────────────────────────────────────
 
 # Renders the home page: a searchable list of all high schools as clickable links.
-# Clicking a link fires a JS event that sets input$go_to_center on the server.
+# Clicking a link fires a JS event that sets input$go_to_center on the server. 
 page_home_ui <- function(con) {
+  
+  # all  centers outside because they do not change
   centers <- dbGetQuery(con, "SELECT name, id FROM high_schools ORDER BY name")
-
   tagList(
     h2(icon("school"), " Guía de centros"),
     p(class = "text-muted", sprintf("%d centros disponibles", nrow(centers))),
@@ -92,10 +93,10 @@ center_info_card_ui <- function(center) {
     if (!is.na(center$region_name))       center$region_name       else ""
   ))
 
-  bslib::card(
+  card(
     fill  = FALSE,
     style = "height:320px; overflow-y:auto;",
-    bslib::card_header(icon("circle-info"), " Información general"),
+    card_header(icon("circle-info"), " Información general"),
 
     tags$div(
       style = "display:flex; gap:1rem; height:100%;",
@@ -124,7 +125,7 @@ center_info_card_ui <- function(center) {
       if (!is.na(center$latitude) && !is.na(center$longitude))
         tags$div(
           style = "flex:1 1 0; position:relative; min-height:200px;",
-          leaflet::leafletOutput("center_map", height = "100%")
+          leafletOutput("center_map", height = "100%")
         )
     )
   )
@@ -132,9 +133,9 @@ center_info_card_ui <- function(center) {
 
 # Contact card: email (mailto), phone, website.
 center_contact_card_ui <- function(center) {
-  bslib::card(
+  card(
     fill = FALSE,
-    bslib::card_header(icon("address-book"), " Contacto"),
+    card_header(icon("address-book"), " Contacto"),
 
     tags$ul(
       class = "list-unstyled mb-0",
@@ -156,9 +157,9 @@ center_contact_card_ui <- function(center) {
 
 # Chart card: metric selector + plot output.
 center_chart_card_ui <- function() {
-  bslib::card(
+  card(
     fill = FALSE,
-    bslib::card_header(icon("chart-line"), " Evolución de resultados PAU"),
+    card_header(icon("chart-line"), " Evolución de resultados PAU"),
 
     selectizeInput(
       "metric",
@@ -187,15 +188,15 @@ page_center_ui <- function(center) {
   if (!is.null(center$image[[1]]))
     img_base64 <- base64enc::base64encode(center$image[[1]])
 
-  bslib::card(
+  card(
     fill = FALSE,
 
-    bslib::card_header(
+    card_header(
       class = "d-flex align-items-center gap-2",
       icon("school"), tags$span(class = "noun", center$name)
     ),
 
-    bslib::layout_columns(
+    layout_columns(
       col_widths = c(4, 8),
       style      = "height: 320px;",
       center_photo_ui(img_base64),
@@ -287,27 +288,27 @@ build_kpi_boxes <- function(latest) {
     formatC(round(x, digits), format = "f", digits = digits)
   }
 
-  bslib::layout_columns(
+  layout_columns(
     col_widths = c(3, 3, 3, 3),
-    bslib::value_box(
+    value_box(
       title    = paste("Nota media PAU", latest$year),
       value    = fmt(latest$average_compulsory_pau),
       showcase = icon("graduation-cap"),
       theme    = "primary"
     ),
-    bslib::value_box(
+    value_box(
       title    = paste("Aprobados", latest$year),
       value    = paste0(fmt(latest$pass_percentatge, 1), " %"),
       showcase = icon("circle-check"),
       theme    = "success"
     ),
-    bslib::value_box(
+    value_box(
       title    = paste("Diferencia Bach–PAU", latest$year),
       value    = fmt(latest$diference_average_bach_pau),
       showcase = icon("arrow-trend-down"),
       theme    = "warning"
     ),
-    bslib::value_box(
+    value_box(
       title    = paste("Presentados", latest$year),
       value    = latest$candidates %||% "—",
       showcase = icon("users"),
@@ -385,7 +386,7 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
 
   # ── Theme ──────────────────────────────────────────────────────────────────
   theme_palette <- isolate({
-    tv <- bslib::bs_get_variables(
+    tv <- bs_get_variables(
       session$getCurrentTheme(),
       c("primary", "warning", "success", "dark")
     )
@@ -492,12 +493,12 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
     build_kpi_boxes(df[which.max(df$year), ])
   })
 
-  output$center_map <- leaflet::renderLeaflet({
+  output$center_map <- renderLeaflet({
     center <- req(center_data())
     req(!is.na(center$latitude), !is.na(center$longitude))
-    leaflet::leaflet(options = leaflet::leafletOptions(scrollWheelZoom = FALSE)) |>
-      leaflet::addTiles() |>
-      leaflet::addMarkers(lng = center$longitude, lat = center$latitude, popup = center$name)
+    leaflet(options = leafletOptions(scrollWheelZoom = FALSE)) |>
+      addTiles() |>
+      addMarkers(lng = center$longitude, lat = center$latitude, popup = center$name)
   })
 
   output$center_page <- renderUI({
