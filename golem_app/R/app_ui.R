@@ -45,11 +45,11 @@ app_ui <- function(request) {
         # Menu of regions
         nav_menu(
           "Regiones",
-          nav_panel(
-            "Provincia",
-            value = "regions-provincia",
-            "WIP"
-          ),
+          # nav_panel(
+          #   "Provincia",
+          #   value = "regions-provincia",
+          #   "WIP"
+          # ),
           nav_panel(
             "Comarca",
             value = "regions-comarca",
