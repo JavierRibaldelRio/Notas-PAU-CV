@@ -21,47 +21,25 @@ mod_center_guide_ui <- function(id) {
 
 # Renders the home page: a searchable list of all high schools as clickable links.
 # Clicking a link fires a JS event that sets input$go_to_center on the server. 
-page_home_ui <- function(con) {
-  
-  # all  centers outside because they do not change
-  centers <- dbGetQuery(con, "SELECT name, id FROM high_schools ORDER BY name")
+page_home_ui <- function() {
   tagList(
     h2(icon("school"), " Guía de centros"),
-    p(class = "text-muted", sprintf("%d centros disponibles", nrow(centers))),
 
-    tags$input(
-      type        = "text",
-      id          = "center-search",
-      class       = "form-control mb-3",
-      placeholder = "Buscar centro..."
-    ),
-
+    # Search bar with icon — raw input avoids the form-group wrapper that breaks input-group
     tags$div(
-      class = "list-group",
-      id    = "center-list",
-      lapply(seq_len(nrow(centers)), function(i) {
-        tags$a(
-          href    = "#",
-          class   = "list-group-item list-group-item-action d-flex justify-content-between align-items-center",
-          onclick = sprintf(
-            "Shiny.setInputValue('go_to_center', '%s', {priority: 'event'}); return false;",
-            centers$id[i]
-          ),
-          centers$name[i],
-          icon("chevron-right")
-        )
-      })
+      class = "input-group mb-3",
+      tags$span(class = "input-group-text", icon("magnifying-glass")),
+      tags$input(
+        type        = "text",
+        id          = "center_search",
+        class       = "form-control",
+        placeholder = "Buscar centro..."
+      )
     ),
 
-    # Client-side filter — no server round-trip needed
-    tags$script(HTML(
-      "document.getElementById('center-search').addEventListener('input', function() {
-        var val = this.value.toLowerCase();
-        document.querySelectorAll('#center-list a').forEach(function(el) {
-          el.style.display = el.textContent.toLowerCase().includes(val) ? '' : 'none';
-        });
-      });"
-    ))
+    # List and count rendered server-side so filtering is handled in R
+    uiOutput("center_count"),
+    uiOutput("center_list")
   )
 }
 
@@ -82,7 +60,7 @@ center_photo_ui <- function(img_base64) {
 
 # General-info card: field list on the left, embedded mini-map on the right.
 center_info_card_ui <- function(center) {
-  regime_map   <- c("0" = "Públic", "1" = "Concertado-Privado", "3" = "Privado")
+  regime_map   <- c("0" = "Público", "1" = "Concertado", "2" = "Privado")
   regime_label <- regime_map[as.character(center$type_id)]
 
   # add info if exists data
@@ -202,7 +180,7 @@ center_regime_badge <- function(type_id) {
     as.character(type_id),
     "0" = list(label = "Público",     class = "bg-success"),
     "1" = list(label = "Concertado",  class = "bg-warning text-dark"),
-    "3" = list(label = "Privado",     class = "bg-danger"),
+    "2" = list(label = "Privado",     class = "bg-danger"),
          list(label = "Desconocido", class = "bg-secondary")
   )
   tags$span(class = paste("badge", cfg$class), cfg$label)
@@ -439,6 +417,55 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
 
   setup_routing_observers(input, session, center_id)
 
+  # ── Home list ───────────────────────────────────────────────────────────────
+
+  # All centers loaded once — they don't change at runtime
+  all_centers <- dbGetQuery(pool, "SELECT id, name, type_id FROM high_schools ORDER BY name")
+
+  # Filtered subset reacts to the search input
+  filtered_centers <- reactive({
+    query <- trimws(input$center_search %||% "")
+    if (!nzchar(query)) return(all_centers)
+    all_centers |> filter(grepl(query, name, ignore.case = TRUE))
+  })
+
+  output$center_count <- renderUI({
+    n     <- nrow(filtered_centers())
+    total <- nrow(all_centers)
+    p(class = "text-muted",
+      if (n == total) sprintf("%d centros disponibles", total)
+      else            sprintf("%d de %d centros", n, total)
+    )
+  })
+
+  output$center_list <- renderUI({
+    df <- filtered_centers()
+
+    if (nrow(df) == 0) {
+      return(p(class = "text-muted fst-italic", "No se han encontrado centros con ese nombre."))
+    }
+
+    tags$div(
+      class = "list-group",
+      lapply(seq_len(nrow(df)), function(i) {
+        tags$a(
+          href    = "#",
+          class   = "list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3",
+          onclick = sprintf(
+            "Shiny.setInputValue('go_to_center', '%s', {priority: 'event'}); return false;",
+            df$id[i]
+          ),
+          tags$div(
+            class = "d-flex align-items-center gap-2",
+            center_regime_badge(df$type_id[i]),
+            tags$span(class = "noun", df$name[i])
+          ),
+          icon("chevron-right")
+        )
+      })
+    )
+  })
+
   # ── Theme ──────────────────────────────────────────────────────────────────
   theme_palette <- isolate({
     tv <- bs_get_variables(
@@ -623,7 +650,7 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
 
   output$center_page <- renderUI({
     id <- center_id()
-    if (is.null(id) || id == "0") return(page_home_ui(pool))
+    if (is.null(id) || id == "0") return(page_home_ui())
     center <- center_data()
     if (is.null(center)) return(page_invalid_ui())
     page_center_ui(center)
