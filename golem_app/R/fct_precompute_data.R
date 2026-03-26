@@ -102,7 +102,7 @@ create_region_data <- function(con) {
       dplyr::group_by(name, region_code, type_id, year, call) |>
       summarise_pau_metrics(),
 
-    #without separate for each type_id under type_id = 4
+    #without separate for each type_id under type_id = 3
     df |>
       dplyr::group_by(name, region_code, year, call) |>
       summarise_pau_metrics() |>
@@ -124,6 +124,7 @@ create_region_data <- function(con) {
       dplyr::mutate(type_id = as.integer(3))
   )
 
+  # Every year + global year 
   region_data <- dplyr::bind_rows(region_data, resu)
 
   

@@ -17,7 +17,7 @@ app_ui <- function(request) {
       # Main UI of the page
       page_navbar(
         title = "Análisis Notas PAU",
-        id = "page",
+        id = "page_selector",
 
         # Navbar settings
         navbar_options = navbar_options(
@@ -65,7 +65,7 @@ app_ui <- function(request) {
         nav_panel(
           "Centros",
           value="centros",
-          uiOutput("center_page")
+          mod_center_guide_ui("center_guide_1")
         ),
 
         # # Menu of centers
