@@ -83,14 +83,8 @@ app_ui <- function(request) {
 
         # About us
         nav_panel("Sobre nosotros", value = "about",
-        tagList(
-          tags$ul(
-            tags$li("Javier Ribal del Río"),
-            tags$li("Pau Minguet Micó")
-          ),
-          tags$strong("Doble grado en Administración y Dirección de Empresas e Ingeniería Informática"),
-          tags$p("Universitat Politècnica de València")
-        )),
+          mod_about_page_ui("about_page")
+        ),
       )
     )
   )

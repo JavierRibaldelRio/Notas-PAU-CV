@@ -48,4 +48,7 @@ app_server <- function(input, output, session) {
   
   # Municipalities
   mod_regions_municipalities_server("regions_municipalities_1")
+
+  # About page
+  mod_about_page_server("about_page")
 }
