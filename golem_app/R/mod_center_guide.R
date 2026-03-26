@@ -11,7 +11,14 @@ mod_center_guide_ui <- function(id) {
   # overflow-y:auto neutralises the fillable flex context coming from page_fillable,
   # preventing leaflet's absolutely-positioned layers from escaping their card.
   tags$div(
+    id    = "center-guide-container",
     style = "overflow-y: auto; height: 100%; padding: 1rem;",
+    tags$script(HTML(
+      "Shiny.addCustomMessageHandler('scrollTop', function(msg) {
+        var el = document.getElementById('center-guide-container');
+        if (el) el.scrollTo({ top: 0, behavior: 'instant' });
+      });"
+    )),
     uiOutput("center_page")
   )
 }
@@ -650,6 +657,9 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
 
   output$center_page <- renderUI({
     id <- center_id()
+
+    session$sendCustomMessage("scrollTop", list())
+
     if (is.null(id) || id == "0") return(page_home_ui())
     center <- center_data()
     if (is.null(center)) return(page_invalid_ui())
