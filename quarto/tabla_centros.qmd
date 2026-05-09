@@ -1,0 +1,158 @@
+---
+title: "Centros x Convocatoria"
+subtitle: "Ordinaria"
+author:
+  - name: Javier Ribal del Río
+  - name: Pau Minguet Micó
+format:
+  pdf:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+---
+
+```{r}
+#| message: false
+#| include: false
+library(tidyverse)
+library(DBI)
+library(knitr)
+library(kableExtra)
+
+
+# Data base
+create_sqlite_con_precompute <- function(
+  db_path = "../data/notas-pau.db",
+  flags = RSQLite::SQLITE_RO,
+  pragmas = c(
+    journal_mode = "WAL",
+    busy_timeout = 5000,
+    synchronous = "NORMAL",
+    cache_size = 10000
+  )
+) {
+  con <- DBI::dbConnect(
+    drv = RSQLite::SQLite(),
+    dbname = db_path,
+    flags = flags
+  )
+
+  for (i in seq_along(pragmas)) {
+    key <- names(pragmas)[i]
+    val <- pragmas[[i]]
+    stmt <- sprintf(
+      "PRAGMA %s = %s;",
+      key,
+      if (is.character(val)) val else as.character(val)
+    )
+    try(DBI::dbExecute(con, stmt), silent = TRUE)
+  }
+
+  con
+}
+
+
+con <- create_sqlite_con_precompute()
+```
+
+
+```{r}
+raw <- dbGetQuery(
+  con,
+  "SELECT name, year, type_id FROM high_school_marks JOIN high_schools ON  high_school_marks.high_school_id = high_schools.id  WHERE call = 0"
+) |>
+  distinct(name, year, type_id)
+
+year_cols <- sort(unique(raw$year))
+n_years <- length(year_cols)
+
+matrix <- raw |>
+  mutate(value = "x") |>
+  pivot_wider(
+    names_from = year,
+    values_from = value,
+    values_fill = ""
+  ) |>
+  mutate(
+    n_present = rowSums(across(all_of(as.character(year_cols))) == "x"),
+    todas = if_else(n_present == n_years, "x", "")
+  ) |>
+  arrange(desc(n_present), name)
+
+display <- matrix |>
+  select(name, all_of(as.character(year_cols)), todas)
+
+display_render <- display |>
+  mutate(across(-name, ~ ifelse(.x == "x", "✓", "")))
+
+kable(
+  display_render,
+  booktabs = TRUE,
+  longtable = TRUE,
+  align = c("l", rep("c", n_years), "c"),
+  col.names = c("Centro", as.character(year_cols), "Todas"),
+  caption = "Presencia de los centros por año (columna final: presente en todas las convocatorias)"
+) %>%
+  kable_styling(
+    latex_options = c("repeat_header", "striped"),
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE,
+    font_size = 8,
+    position = "center"
+  ) %>%
+  column_spec(1, width = "9cm", bold = TRUE) %>%
+  column_spec(ncol(display_render), bold = TRUE) %>%
+  row_spec(0, bold = TRUE)
+```
+
+```{r}
+resumen <- matrix |>
+  mutate(estado = if_else(todas == "x", "En todas", "No en todas")) |>
+  group_by(type_id, estado) |>
+  summarise(n = n(), .groups = "drop") |>
+  pivot_wider(names_from = estado, values_from = n, values_fill = 0) |>
+  mutate(
+    type_id = as.character(type_id),
+    total = `En todas` + `No en todas`,
+    Resumen = paste0(
+      "En todas: ", `En todas`, " (", round(100 * `En todas` / total, 1), "%)",
+      " / No en todas: ", `No en todas`, " (", round(100 * `No en todas` / total, 1), "%)"
+    )
+  ) |>
+  select(type_id, Resumen)
+
+global <- matrix |>
+  summarise(
+    en_todas = sum(todas == "x"),
+    no_en_todas = sum(todas != "x")
+  ) |>
+  mutate(
+    type_id = "Global",
+    total = en_todas + no_en_todas,
+    Resumen = paste0(
+      "En todas: ", en_todas, " (", round(100 * en_todas / total, 1), "%)",
+      " / No en todas: ", no_en_todas, " (", round(100 * no_en_todas / total, 1), "%)"
+    )
+  ) |>
+  select(type_id, Resumen)
+
+resumen_final <- dplyr::bind_rows(resumen, global)
+
+kable(
+  resumen_final,
+  booktabs = TRUE,
+  align = c("l", "l"),
+  col.names = c("Tipo de centro", "Resumen"),
+  caption = "Centros presentes en todas las convocatorias por tipo y global"
+) %>%
+  kable_styling(
+    latex_options = c("hold_position", "striped"),
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE,
+    position = "center"
+  ) %>%
+  row_spec(0, bold = TRUE) %>%
+  row_spec(nrow(resumen_final), bold = TRUE)
+```
+
+```

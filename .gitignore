@@ -21,3 +21,7 @@ Notas-PAU-CV.Rproj
 
 *.tar.gz
 .posit
+
+quarto/*.pdf
+quarto/*.html
+quarto/*/
