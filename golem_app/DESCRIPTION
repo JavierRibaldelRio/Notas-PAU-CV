@@ -34,10 +34,10 @@ Imports:
     pkgload
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.3.3
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 URL: https://github.com/JavierRibaldelRio/Notas-PAU-CV.git
 BugReports: https://github.com/JavierRibaldelRio/Notas-PAU-CV.git/issues
 Description: Notas pau.
+Config/roxygen2/version: 8.0.0

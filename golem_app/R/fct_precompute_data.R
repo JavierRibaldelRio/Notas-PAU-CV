@@ -54,7 +54,7 @@ summarise_pau_metrics_all <- function(data) {
         sum(candidates_total_sum),
       enrolled_total_sum = sum(enrolled_total_sum),
       candidates_total_sum = sum(candidates_total_sum),
-      pass_percentatge = pass_total / candidates_total_sum,
+      pass_percentatge = pass_total / candidates_total_sum *100,
       diference_average_bach_pau = average_bach - average_compulsory_pau,
       year = as.integer(0),
       .groups = "drop"
@@ -76,12 +76,12 @@ create_region_data <- function(con) {
       enrolled_total,
       candidates,
       pass,
-      pass_percentatge ,
-      average_bach ,
-      standard_dev_bach ,
-      average_compulsory_pau ,
+      pass_percentatge,
+      average_bach,
+      standard_dev_bach,
+      average_compulsory_pau,
       standard_dev_pau,
-      diference_average_bach_pau , 
+      diference_average_bach_pau, 
 	    coeff_variation_bach, 
 	    coeff_variation_pau
     FROM high_schools
