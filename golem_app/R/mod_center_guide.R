@@ -162,7 +162,6 @@ center_chart_card_ui <- function() {
             "Desv. estándar PAU"      = "standard_dev_pau",
             "Diferencia Bach–PAU"     = "diference_average_bach_pau",
             "Coef. variación PAU"     = "coeff_variation_pau",
-            "Matriculados"            = "enrolled_total",
             "Presentados"             = "candidates",
             "Aprobados"               = "pass"
           ),
@@ -509,11 +508,11 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
     center <- req(center_data())
     dbGetQuery(
       pool,
-      "SELECT year, call, enrolled_total, candidates, pass,
+      "SELECT year, call, candidates, pass,
               pass_percentatge, average_bach, average_compulsory_pau,
               standard_dev_pau, diference_average_bach_pau, coeff_variation_pau
        FROM high_school_marks
-       WHERE high_school_id = ? AND call = 2
+       WHERE high_school_id = ? AND call = 0
        ORDER BY year",
       params = list(center$id)
     )
@@ -544,13 +543,13 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
       pool,
       sprintf(
         "SELECT hsm.year, hs.id AS source_id, hs.name AS source,
-                hsm.enrolled_total, hsm.candidates, hsm.pass,
+                hsm.candidates, hsm.pass,
                 hsm.pass_percentatge, hsm.average_bach,
                 hsm.average_compulsory_pau, hsm.standard_dev_pau,
                 hsm.diference_average_bach_pau, hsm.coeff_variation_pau
          FROM high_school_marks hsm
          JOIN high_schools hs ON hs.id = hsm.high_school_id
-         WHERE hsm.high_school_id IN (%s) AND hsm.call = 2
+         WHERE hsm.high_school_id IN (%s) AND hsm.call = 0
          ORDER BY hsm.year", placeholders
       ),
       params = as.list(nc$id)
@@ -560,10 +559,10 @@ mod_center_guide_server <- function(id, input, output, session, pool) {
   global_marks <- reactive({
     df <- dbGetQuery(
       pool,
-      "SELECT year, enrolled AS enrolled_total, candidates, pass,
+      "SELECT year,
               pass_percentage AS pass_percentatge, average_bach,
               average_pau AS average_compulsory_pau, standard_dev_pau
-       FROM global_results WHERE call = 2 ORDER BY year"
+       FROM global_results WHERE call = 0 ORDER BY year"
     )
     df$source <- "Global"
     df
