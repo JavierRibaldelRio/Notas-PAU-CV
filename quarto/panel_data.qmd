@@ -1,0 +1,124 @@
+---
+title: Modelo de panel
+author:
+  - name: Javier Ribal del Río
+  - name: Pau Minguet Micó
+format:
+  pdf:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+---
+
+## Motivación
+
+Como nuestro objetivo es determinar cuales son los factores que determinan una mayor o menor tasa de aprobados en las Pruebas de Acceso a la Universidad (PAU) en la Comunidad Valenciana, decidimos optar por un modelo de panel, porque se adapta correctamente a las características de nuestros datos.
+
+### Características de nuestros datos de panel
+
+Nuestos datos de panel tienen la siguiente estructura:
+
+- Dimensión *transversal* ($N$ observaciones): $N$ = institutos (`high_schools`)
+- Dimensión *temporal* ($T$ períodos): $T$ = años 2010-2024, solo la fase *ordinaria* (`call = 0`)
+
+Estos datos forman un *micro panel*, porque $N$ es muy grande y $T$ es mucho más pequeño.
+
+Consideramos que nuestro panel **no esta balanceado**, dado que todos los individuos $N$ tienen $T$ observaciones.
+
+## Modelización
+
+Para nuestro modelo consideraremos como variable dependiente el **porcentage de aprobados** (`pass_percentage` (de `high_school_marks`)).
+
+Como variables explicativas tenemos:
+
+- **La media de bachillerato** (`average_bach` (de `high_school_marks`))
+- **La diferencia de las medias de bachillerato y la PAU** (`diff_average_bach_pau` (de `high_school_marks`))
+- **Los presentados** (`candidates` (de `high_school_marks`))
+- **El coeficiente de variación de las notas de bachillerato** (`coeff_variation_bach` (de `high_school_marks`))
+- **El tipo de instituto** (`type_id` (de `high_schools`))
+- **La comarca del instituto** (`region` (de `municipalities`))
+
+### Modelo formal
+
+$$
+\text{pass\_pct}_{it} = \beta_1 \text{avg\_bach}_{it} + \beta_2 \text{dif\_bach\_pau}_{it} + \beta_3 \text{candidates}_{it} + \beta_4 \text{coeff\_var}_{it} + \eta_i + v_{it}
+$$
+
+## Código
+
+### Importamos librerias
+ 
+```{r}
+library(DBI)
+library(RSQLite)
+library(plm)
+library(dplyr)
+```
+
+### Creamos la conexión con la base de datos
+
+```{r}
+con <- dbConnect(RSQLite::SQLite(), "../data/notas-pau.db")
+
+# Creamos la query para la BD
+query <- "
+  SELECT 
+    hsm.high_school_id,
+    hsm.year,
+    hsm.pass_percentatge,
+    hsm.average_bach,
+    hsm.diference_average_bach_pau,
+    hsm.candidates,
+    hsm.coeff_variation_bach,
+    hs.type_id,
+    m.region
+  FROM high_school_marks hsm
+  JOIN high_schools hs ON hsm.high_school_id = hs.id
+  JOIN municipalities m ON hs.municipality_id = m.id
+  WHERE hsm.call = 1
+    AND hsm.pass_percentage IS NOT NULL
+    AND hsm.average_bach IS NOT NULL
+"
+
+# Recogemos los datos
+datos <- dbGetQuery(con, query)
+dbDisconnect(con)
+```
+
+### Declaración como panel
+
+```{r}
+panel <- pdata.frame(datos, index = c("high_school_id", "year"))
+```
+
+### Estimación de los tres modelos
+
+```{r}
+modelo_pols <- plm(
+  pass_percentatge ~ average_bach + diference_average_bach_pau + candidates + coeff_variation_bach,
+  data = panel,
+  model = "pooling"
+)
+
+modelo_fe <- plm(
+  pass_percentatge ~ average_bach + diference_average_bach_pau + candidates + coeff_variation_bach,
+  data = panel,
+  model = "within"
+)
+
+modelo_re <- plm(
+  pass_percentatge ~ average_bach + diference_average_bach_pau + candidates + coeff_variation_bach,
+  data = panel, 
+  model = "random"
+)
+```
+
+### Test de Hausman
+
+```{r}
+phtest(modelo_fe, modelo_re)
+
+# Resumenes
+summary(modelo_fe)
+summary(modelo_re)
+```
