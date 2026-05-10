@@ -137,7 +137,11 @@ datos <- high_school_marks |>
 datos <- datos |>
   group_by(high_school_id) |>
   filter(n() > 10) |>
-  ungroup()
+  ungroup() |>
+  mutate(
+    type_id = factor(type_id),
+    region  = factor(region)
+  )
 ```
 
 ### Declaración del panel
@@ -430,4 +434,80 @@ Como en el Modelo 1, los residuos muestran patrones de dispersión no constante,
 
 ```{r}
 dbDisconnect(con)
+```
+
+## Modelo 2
+
+El modelo basado en *random effects* permite analizar tanto la variación temporal como las diferencias estructurales existentes entre institutos. A diferencia del modelo de efectos fijos, esta aproximación conserva la información asociada a las características propias de cada centro, permitiendo estudiar cómo factores como el entorno territorial o el carácter del centro.
+
+Asimismo, el modelo incorpora efectos temporales con el objetivo de controlar aquellos acontecimientos comunes a todos los institutos en determinados años, como modificaciones en la estructura de la prueba, cambios normativos o el impacto de la pandemia del COVID-19.
+
+
+$$
+\text{pass\_pct}_{it} =
+\alpha +
+\beta_1 \text{avg\_bach}_{it} +
+\beta_2 \log(\text{candidates}_{it}) +
+\beta_3 \text{coeff\_var}_{it} +
+\beta_4 \text{type}_{i} +
+\beta_5 \text{region}_{i} +
+\lambda_t +
+u_i +
+\varepsilon_{it}
+$$
+
+Donde:
+
+- $i = 1, \dots, N$ identifica el instituto.
+- $t = 1, \dots, T$ identifica el año.
+- $\alpha$ representa el término constante.
+- $\beta_1, \dots, \beta_5$ son los coeficientes asociados a las variables explicativas.
+- $\lambda_t$ representa los efectos temporales comunes a cada año.
+- $u_i$ representa el efecto aleatorio específico de cada instituto.
+- $\varepsilon_{it}$ es el término de error idiosincrático.
+
+### Estimación
+
+Por defecto, `plm` estima los componentes de varianza del modelo de efectos aleatorios mediante el método de **Swamy-Arora**, que requiere un modelo *between* en la dimensión temporal con tantos grados de libertad como parámetros se quieran estimar. En nuestro caso, al introducir `region` (con ≈25 comarcas) y `type_id` junto al resto de variables, el número de coeficientes supera el número de años disponibles ($T = 15$), por lo que el estimador Swamy-Arora deja de ser computable (`model not estimable`).
+
+Por ello empleamos el estimador de **Wallace-Hussain** (`random.method = "walhus"`), que descompone las varianzas usando los residuos del modelo *pooled* y no requiere la estimación previa de los modelos *between*. Esto permite incluir variables invariantes en el tiempo con muchas categorías, como ocurre con la comarca del instituto.
+
+```{r}
+re_tw <- plm(
+  pass_percentatge ~ average_bach + log(candidates) + coeff_variation_bach + type_id + region,
+  data = panel,
+  model = "random",
+  effect = "twoways",
+  random.method = "walhus",
+)
+
+fe_tw <- plm(
+  pass_percentatge ~ average_bach + log(candidates) + coeff_variation_bach,
+  data = panel,
+  model = "within",
+  effect = "twoways",
+)
+```
+
+#### Test de Hausman
+
+```{r}
+hausman_tw <- phtest(fe_tw, re_tw)
+print(hausman_tw)
+summary(re_tw)
+```
+
+#### Corrección de la inferencia
+
+```{r}
+re_tw_robust <- coeftest(
+  re_tw,
+  vcov = vcovHC(
+    re_tw,
+    method = "arellano",
+    type = "HC1",
+    cluster = "group"
+  )
+)
+re_tw_robust
 ```
