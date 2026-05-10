@@ -24,6 +24,10 @@ Notas-PAU-CV.Rproj
 
 quarto/*.pdf
 quarto/*.html
+quarto/*.tex
+quarto/*.log
+quarto/*.toc
+quarto/*.aux
 quarto/*/
 
 golem_app/inst/app/data
