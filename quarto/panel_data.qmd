@@ -33,6 +33,8 @@ Estos datos conforman un *micro panel*, ya que $N >> T$
 
 Consideramos que nuestro panel **no esta balanceado**, dado que no todos los individuos $N$ tienen $T$ observaciones.
 
+Adicionalmente, se descartan los centros con **10 o menos observaciones temporales**, ya que aportan poca información para la estimación *within* y pueden distorsionar los efectos fijos individuales
+
 Se ha seleccionado un modelo de datos de panel porque tiene en cuenta la heterogeneidad no observada(aquellas características no medibles ni medibles). En el caso de los individuos, los centro tienen características intrinsecas que influyen en sus resultados: la cultura del centro, las metodologías aplicadas, la calidad docente...
 
 Asimismo, también se  puede reconocer la heterogeneidad temporal, eventos que ocurren en determinado $t$ que condicionan el resultado de los centros, por ejemplo en el 2010 y 2025 los leves cambios en el modelo de examen de la PAU y en el 2020 la pandemia causada por el COVID-19.
@@ -86,7 +88,7 @@ La variable `diff_average_bach_pau` se descarta del modelo principal por su fuer
 library(DBI)
 library(RSQLite)
 library(dbplyr)
-library(dplyr)
+library(tidyverse)
 library(plm)
 library(lmtest)
 library(sandwich)
@@ -119,15 +121,23 @@ datos <- high_school_marks |>
     high_school_id,
     year,
     pass_percentatge,
+    average_compulsory_pau,
     average_bach,
     diference_average_bach_pau,
     candidates,
     coeff_variation_bach,
+    standard_dev_bach,
     type_id,
     region
   ) |>
-  mutate(pass_percentatge = pass_percentatge/100 ) |> 
+  mutate(pass_percentatge = pass_percentatge/100 ) |>
   collect()
+
+# Conservamos únicamente los centros con más de 10 observaciones temporales
+datos <- datos |>
+  group_by(high_school_id) |>
+  filter(n() > 10) |>
+  ungroup()
 ```
 
 ### Declaración del panel
@@ -258,7 +268,165 @@ Es importante recordar que estas conclusiones son de naturaleza ***within***, es
 
 Por ello, para responder a la pregunta de qué factores explican las diferencias *entre* institutos será necesario plantear el Modelo 2.
 
-### Cierre de la conexión
+#### Diagnóstico gráfico
+
+```{r}
+#| label: fig-fe-eta
+#| fig-cap: "Distribución de los efectos fijos $\\hat{\\eta}_i$ estimados para cada instituto."
+fe_eta <- tibble(eta = as.numeric(fixef(fe)))
+
+ggplot(fe_eta, aes(x = eta)) +
+  geom_histogram(bins = 40, fill = "steelblue", colour = "white") +
+  labs(x = expression(hat(eta)[i]), y = "Nº de institutos") +
+  theme_minimal()
+```
+
+El histograma muestra la heterogeneidad estructural entre institutos: el rango de los efectos fijos cuantifica cuánto difieren las tasas medias de aprobados entre centros una vez descontado el efecto de las variables explicativas.
+
+```{r}
+#| label: fig-fe-resid
+#| fig-cap: "Residuos del modelo frente a los valores ajustados (transformación *within*)."
+diag_fe <- tibble(
+  fit = as.numeric(fitted(fe)),
+  res = as.numeric(residuals(fe))
+)
+
+ggplot(diag_fe, aes(x = fit, y = res)) +
+  geom_point(alpha = 0.25, size = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "red") +
+  labs(x = "Valores ajustados", y = "Residuos") +
+  theme_minimal()
+```
+
+El gráfico de residuos confirma visualmente el resultado del test de Breusch-Pagan: la dispersión de los residuos no es constante, lo que justifica el uso de errores estándar robustos.
+
+## Modelo sobre la nota media de la PAU
+
+Replicamos la misma estrategia de panel con efectos fijos (*within*), pero ahora con la **nota media obligatoria de la PAU** (`average_compulsory_pau`) como variable dependiente. La motivación es contrastar si los factores que explican la *tasa de aprobados* operan también sobre el *nivel medio* de la nota.
+
+### Especificación formal
+
+$$
+\text{avg\_pau}_{it} = \beta_1 \text{avg\_bach}_{it} + \beta_2 \log(\text{candidates}_{it}) + \beta_3 \text{sd\_bach}_{it} + \eta_i + v_{it}
+$$
+
+### Estimación
+
+```{r}
+fe_pau <- plm(
+  average_compulsory_pau ~ average_bach + log(candidates) + standard_dev_bach,
+  data = panel,
+  model = "within",
+)
+
+re_pau <- plm(
+  average_compulsory_pau ~ average_bach + log(candidates) + standard_dev_bach,
+  data = panel,
+  model = "random",
+)
+```
+
+#### Test de Hausman
+
+```{r}
+hausman_pau <- phtest(fe_pau, re_pau)
+print(hausman_pau)
+summary(fe_pau)
+```
+
+El test de Hausman presenta un estadístico $\chi^2$ de `r round(hausman_pau$statistic, 3)` y un *p-value* de `r signif(hausman_pau$p.value, 3)`. Con $\alpha = 0.05$ rechazamos la hipótesis nula, por lo que seleccionamos también el **modelo de efectos fijos**.
+
+#### Otros tests
+
+```{r}
+hetero_pau <- bptest(fe_pau)
+print(hetero_pau)
+
+auto_pau <- pbgtest(fe_pau)
+print(auto_pau)
+
+cross_pau <- pcdtest(fe_pau)
+print(cross_pau)
+```
+
+El *p-value* de Breusch-Pagan es `r signif(hetero_pau$p.value, 3)`, el de Breusch-Godfrey/Wooldridge es `r signif(auto_pau$p.value, 3)` y el del CD de Pesaran es `r signif(cross_pau$p.value, 3)`. Los tres por debajo de 0.05, por lo que el diagnóstico es análogo al del Modelo 1: existe heterocedasticidad, autocorrelación temporal y dependencia transversal.
+
+#### Corrección de la inferencia
+
+```{r}
+fe_pau_robust <- coeftest(
+  fe_pau,
+  vcov = vcovHC(
+    fe_pau,
+    method = "arellano",
+    type = "HC1",
+    cluster = "group"
+  )
+)
+fe_pau_robust
+```
+
+#### Interpretación
+
+```{r}
+b_avg_pau   <- fe_pau_robust["average_bach", "Estimate"]
+p_avg_pau   <- fe_pau_robust["average_bach", "Pr(>|t|)"]
+b_cand_pau  <- fe_pau_robust["log(candidates)", "Estimate"]
+p_cand_pau  <- fe_pau_robust["log(candidates)", "Pr(>|t|)"]
+b_sd_pau    <- fe_pau_robust["standard_dev_bach", "Estimate"]
+p_sd_pau    <- fe_pau_robust["standard_dev_bach", "Pr(>|t|)"]
+r2_pau      <- summary(fe_pau)$r.squared["rsq"]
+```
+
+Tras la corrección robusta, los resultados cambian de forma notable respecto al Modelo 1:
+
+- **`average_bach`** ($\hat{\beta}_1 =$ `r round(b_avg_pau, 4)`, *p-value* = `r signif(p_avg_pau, 3)`) sigue siendo la variable dominante y altamente significativa. Cuando un mismo instituto eleva su media de bachillerato en un punto, la nota media de la PAU aumenta aproximadamente `r round(b_avg_pau, 2)` puntos. La magnitud es muy superior a la del Modelo 1, ya que aquí ambas variables están medidas en la misma escala de notas.
+- **`log(candidates)`** ($\hat{\beta}_2 =$ `r round(b_cand_pau, 4)`, *p-value* = `r signif(p_cand_pau, 3)`) **deja de ser significativa**. El número de presentados afecta a la *tasa de aprobados* (donde el efecto composición es más visible) pero no al *nivel medio* de la nota dentro del centro.
+- **`standard_dev_bach`** ($\hat{\beta}_3 =$ `r round(b_sd_pau, 4)`, *p-value* = `r signif(p_sd_pau, 3)`) mide la dispersión absoluta de las notas de bachillerato dentro del centro. La heterogeneidad interna de la cohorte penaliza la tasa de aprobados pero su efecto sobre el nivel medio de la PAU debe interpretarse con cautela en función de su significatividad.
+
+El $R^2$ *within* asciende a `r round(r2_pau, 3)`, muy superior al del Modelo 1, indicando que la media de bachillerato explica gran parte de la variabilidad temporal de la nota media en la PAU dentro de cada centro.
+
+La ecuación estimada queda como:
+
+$$
+\widehat{\text{avg\_pau}}_{it} = `r round(b_avg_pau, 4)` \cdot \text{avg\_bach}_{it} + \hat{\eta}_i
+$$
+
+La comparación entre ambos modelos sugiere que los efectos del tamaño del centro y la dispersión interna se concentran en el *margen de aprobado* (alumnos cerca del corte) más que en el rendimiento medio de la cohorte.
+
+#### Diagnóstico gráfico
+
+```{r}
+#| label: fig-fe-pau-eta
+#| fig-cap: "Distribución de los efectos fijos $\\hat{\\eta}_i$ del modelo sobre la nota media de la PAU."
+fe_pau_eta <- tibble(eta = as.numeric(fixef(fe_pau)))
+
+ggplot(fe_pau_eta, aes(x = eta)) +
+  geom_histogram(bins = 40, fill = "darkorange", colour = "white") +
+  labs(x = expression(hat(eta)[i]), y = "Nº de institutos") +
+  theme_minimal()
+```
+
+Los efectos fijos en este modelo presentan un rango notablemente mayor que en el Modelo 1, reflejando que las diferencias estructurales de nivel medio entre centros son más acusadas que las diferencias en tasas de aprobados.
+
+```{r}
+#| label: fig-fe-pau-resid
+#| fig-cap: "Residuos vs valores ajustados del modelo sobre la nota media de la PAU."
+diag_fe_pau <- tibble(
+  fit = as.numeric(fitted(fe_pau)),
+  res = as.numeric(residuals(fe_pau))
+)
+
+ggplot(diag_fe_pau, aes(x = fit, y = res)) +
+  geom_point(alpha = 0.25, size = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "red") +
+  labs(x = "Valores ajustados", y = "Residuos") +
+  theme_minimal()
+```
+
+Como en el Modelo 1, los residuos muestran patrones de dispersión no constante, coherentes con el rechazo de la hipótesis de homocedasticidad.
+
+## Cierre de la conexión
 
 ```{r}
 dbDisconnect(con)
