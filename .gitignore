@@ -28,6 +28,7 @@ quarto/*.tex
 quarto/*.log
 quarto/*.toc
 quarto/*.aux
+quarto/*.rmarkdown
 quarto/*/
 
 golem_app/inst/app/data
