@@ -143,7 +143,7 @@ CREATE TABLE high_school_types_results(
   fp_candidates_especific INTEGER,
   FOREIGN KEY (type_id) REFERENCES high_school_types(id)
 );
-CREATE TABLE IF NOT EXISTS "regions" (
+CREATE TABLE "regions" (
 	"id"	INTEGER,
 	"name"	TEXT NOT NULL UNIQUE,
 	"province"	INTEGER NOT NULL,
