@@ -8,28 +8,34 @@ format:
     toc: true
     toc-depth: 3
     number-sections: true
+lang: es
 ---
 
 ## Motivación
 
-Como nuestro objetivo es determinar cuales son los factores que determinan una mayor o menor tasa de aprobados en las Pruebas de Acceso a la Universidad (PAU) en la Comunidad Valenciana, decidimos optar por un modelo de panel, porque se adapta correctamente a las características de nuestros datos.
+El objetivo es determinar los factores explicativos que condiciónan tasa de aprobados y la media obtendia en las *Pruebas de Acceso a la Universidad* (PAU) en la Comunidad Valenciana. Puesto que las observaciones conforman una serie temporal se ha obtado por un modelo de panel.
 
-### Características de nuestros datos de panel
+## Características de nuestros datos de panel
 
-Nuestos datos de panel tienen la siguiente estructura:
+Los datos de panel tienen la siguiente estructura:
 
 - Dimensión *transversal* ($N$ observaciones): $N$ = institutos (`high_schools`)
 - Dimensión *temporal* ($T$ períodos): $T$ = años 2010-2024, solo la fase *ordinaria* (`call = 0`)
 
-Estos datos forman un *micro panel*, porque $N$ es muy grande y $T$ es mucho más pequeño.
+Estos datos conforman un *micro panel*, ya que $N >> T$
 
-Consideramos que nuestro panel **no esta balanceado**, dado que todos los individuos $N$ tienen $T$ observaciones.
+Consideramos que nuestro panel **no esta balanceado**, dado que no todos los individuos $N$ tienen $T$ observaciones.
+
+Se ha seleccionado un modelo de datos de panel porque tiene en cuenta la heterogeneidad no observada(aquellas características no medibles ni medibles). En el caso de los individuos, los centro tienen características intrinsecas que influyen en sus resultados: la cultura del centro, las metodologías aplicadas, la calidad docente...
+
+Asimismo, también se  puede reconocer la heterogeneidad temporal, eventos que ocurren en determinado $t$ que condicionan el resultado de los centros, por ejemplo en el 2010 y 2025 los leves cambios en el modelo de examen de la PAU y en el 2020 la pandemia causada por el COVID-19.
 
 ## Modelización
 
-Para nuestro modelo consideraremos como variable dependiente el **porcentage de aprobados** (`pass_percentage` (de `high_school_marks`)).
+**Variable Dependiente:** **porcentage de aprobados** (`pass_percentage` (de `high_school_marks`)).
 
-Como variables explicativas tenemos:
+
+**Variables explicativas:**
 
 - **La media de bachillerato** (`average_bach` (de `high_school_marks`))
 - **La diferencia de las medias de bachillerato y la PAU** (`diff_average_bach_pau` (de `high_school_marks`))
@@ -40,85 +46,181 @@ Como variables explicativas tenemos:
 
 ### Modelo formal
 
+**Variables explicativas:**
+
+- **La media de bachillerato** (`average_bach` (de `high_school_marks`))
+- **La diferencia de las medias de bachillerato y la PAU** (`diff_average_bach_pau` (de `high_school_marks`))
+- **Los presentados** (`candidates` (de `high_school_marks`))
+- **El coeficiente de variación de las notas de bachillerato** (`coeff_variation_bach` (de `high_school_marks`))
+- **El tipo de instituto** (`type_id` (de `high_schools`))
+- **La comarca del instituto** (`region` (de `municipalities`))
+
+
 $$
-\text{pass\_pct}_{it} = \beta_1 \text{avg\_bach}_{it} + \beta_2 \text{dif\_bach\_pau}_{it} + \beta_3 \text{candidates}_{it} + \beta_4 \text{coeff\_var}_{it} + \eta_i + v_{it}
+\text{pass\_pct}_{it} = \beta_1 \text{avg\_bach}_{it} + \beta_2 \text{candidates}_{it} + \beta_3 \text{coeff\_var}_{it} + \eta_i + v_{it}
 $$
+
+Donde:
+
+- $i = 1, \dots, N$ identifica el instituto.
+- $t = 1, \dots, T$ identifica el año.
+- $\alpha$ representa el término constante.
+- $\beta_1, \beta_2, \beta_3$ son los coeficientes asociados a las variables explicativas.
+- $\eta_i$ representa los efectos fijos específicos de cada instituto.
+- $v_{it}$ es el término de error idiosincrático.
 
 ## Código
 
-### Importamos librerias
+### Importación librerias
  
 ```{r}
 library(DBI)
 library(RSQLite)
-library(plm)
+library(dbplyr)
 library(dplyr)
+library(plm)
+library(lmtest)
+library(sandwich)
 ```
 
-### Creamos la conexión con la base de datos
+### Conexión con la base de datos
 
 ```{r}
-con <- dbConnect(RSQLite::SQLite(), "../data/notas-pau.db")
+con <- dbConnect(drv = RSQLite::SQLite(), dbname ="../data/notas-pau.db", flags= RSQLite::SQLITE_RO )
 
-# Creamos la query para la BD
-query <- "
-  SELECT 
-    hsm.high_school_id,
-    hsm.year,
-    hsm.pass_percentatge,
-    hsm.average_bach,
-    hsm.diference_average_bach_pau,
-    hsm.candidates,
-    hsm.coeff_variation_bach,
-    hs.type_id,
-    m.region
-  FROM high_school_marks hsm
-  JOIN high_schools hs ON hsm.high_school_id = hs.id
-  JOIN municipalities m ON hs.municipality_id = m.id
-  WHERE hsm.call = 1
-    AND hsm.pass_percentage IS NOT NULL
-    AND hsm.average_bach IS NOT NULL
-"
+high_school_marks <- tbl(con, "high_school_marks")
+high_schools      <- tbl(con, "high_schools")
+municipalities    <- tbl(con, "municipalities")
+```
 
-# Recogemos los datos
-datos <- dbGetQuery(con, query)
-dbDisconnect(con)
+### Construimos la consulta con dbplyr
+
+Seleccionamos los datos únicamente de la convocatoria ordinariay excluimos a los centros privados, conservamos a los públicos y concertados
+
+```{r}
+datos <- high_school_marks |>
+  inner_join(high_schools,   by = c("high_school_id" = "id")) |>
+  inner_join(municipalities, by = c("municipality_id" = "id")) |>
+  filter(
+    call == 0, # call = 0 , perimera convocatoria
+    type_id != 2 # 
+
+  ) |>
+  select(
+    high_school_id,
+    year,
+    pass_percentatge,
+    average_bach,
+    diference_average_bach_pau,
+    candidates,
+    coeff_variation_bach,
+    type_id,
+    region
+  ) |>
+  mutate(pass_percentatge = pass_percentatge/100 ) |> 
+  collect()
 ```
 
 ### Declaración como panel
 
 ```{r}
-panel <- pdata.frame(datos, index = c("high_school_id", "year"))
+panel <- datos |>
+  as.data.frame() |>
+  pdata.frame(index = c("high_school_id", "year"))
 ```
 
-### Estimación de los tres modelos
+### Estimación de modelos y 
+
+Aplicamos el logaritmo sobre los candidatos porque es una variable con mucho rango, existen cnetros más grandes que recurrentemente presentan a más de 100 alumnos mientras que otros más pequeños que presentan de media 4 o 5 al año
 
 ```{r}
-modelo_pols <- plm(
-  pass_percentatge ~ average_bach + diference_average_bach_pau + candidates + coeff_variation_bach,
+# fixed effects
+fe <- plm(
+  pass_percentatge ~ average_bach + log(candidates) + coeff_variation_bach ,
   data = panel,
-  model = "pooling"
+  model = "within",
 )
 
-modelo_fe <- plm(
-  pass_percentatge ~ average_bach + diference_average_bach_pau + candidates + coeff_variation_bach,
-  data = panel,
-  model = "within"
-)
-
-modelo_re <- plm(
-  pass_percentatge ~ average_bach + diference_average_bach_pau + candidates + coeff_variation_bach,
+# random effects
+re <- plm(
+  pass_percentatge ~ average_bach + log(candidates) + coeff_variation_bach ,
   data = panel, 
-  model = "random"
+  model = "random",
 )
 ```
 
-### Test de Hausman
+#### Test de Hausman
+
+El test de Hausman compara los estimadores obtenidos mediante el modelo de efectos fijos y el modelo de efectos aleatorios. La hipótesis nula establece que no existen diferencias sistemáticas entre ambos estimadores:
+
+$$
+H_0 : \text{Cov}(X_{it}, \eta_i)=0
+$$
+
+Por ello, en R se introducen ambos modelos en la función `phtest()`, dado que el contraste se basa en comparar los coeficientes estimados en cada especificación.
+```{r}
+# Test de Hausman
+hausman_test <- phtest(fe,re)
+
+print(hausman_test)
+
+# Resúmenes de los modelos
+summary(fe)
+summary(re)
+```
+
+El test de Hausman presenta un estadístico $\chi^2$ de `r round(hausman_test$statistic, 3)` y un *p-value* de `r signif(hausman_test$p.value, 3)`.
+
+Con un nivel de $\alpha = 0.05$, podemos afirmar que existen evidencias significativas para rechazar la hipótesis nula, por lo que seleccionamos el modelo de efectos fijos.
+
+
+#### Otros test
+```{r}
+
+# Heterocedasticidad
+hetero_test <- bptest(fe)
+print(hetero_test)
+
+# Autocorrelación temporal
+auto_test <- pbgtest(fe)
+print(auto_test)
+
+# Dependencia transversal
+cross_test <- pcdtest(fe)
+print(cross_test)
+
+```
+
+El test de Breusch-Pagan permite comprobar la existencia de heterocedasticidad, es decir, si la varianza de los errores es constante. El *p-value* obtenido es `r signif(hetero_test$p.value, 3)`, por lo que se rechaza la hipótesis nula de homocedasticidad. Esto implica que los errores estándar clásicos pueden no ser adecuados.
+
+El test de Breusch-Godfrey/Wooldridge analiza la existencia de autocorrelación temporal en los errores. El *p-value* obtenido es `r signif(auto_test$p.value, 3)`. Al ser inferior a 0.05, existe evidencia de autocorrelación, lo que indica cierta persistencia temporal no recogida por el modelo, esto posibilita el análisis con modelos dinámicos.
+
+El test CD de Pesaran contrasta la independencia transversal entre individuos. El *p-value* obtenido es `r signif(cross_test$p.value, 3)`, por lo que se rechaza la hipótesis nula de independencia transversal. Esto sugiere que los resultados de los institutos no son completamente independientes entre sí, lo que refuerza la conveniencia de explorar modelos de panel espacial.
+
+(Todos con $\alpha = 0.05$)
+
+
+### Corrección de la inferencia
+
+
+Como se aprecia la existencia de heterocedasticidad y autocorrelación temporal en los errores, los errores estándar clásicos pueden no ser consistentes, afectando así a la validez de los contrastes de hipótesis y de los niveles de significación obtenidos. Por ello, se emplea una versión robusta de la matriz de varianzas-covarianzas, que corrige simultáneamente la heterocedasticidad y la autocorrelación intra-individuo, permitiendo realizar una inferencia estadística más fiable.
 
 ```{r}
-phtest(modelo_fe, modelo_re)
+fe_robust <- coeftest(
+  fe,
+  vcov = vcovHC(
+    fe,
+    method = "arellano",
+    type = "HC1",
+    cluster = "group"
+  )
+)
+fe_robust
+```
 
-# Resumenes
-summary(modelo_fe)
-summary(modelo_re)
+
+### Cerramos la conexión
+
+```{r}
+dbDisconnect(con)
 ```
