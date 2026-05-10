@@ -4,9 +4,16 @@ author:
   - name: Javier Ribal del Río
   - name: Pau Minguet Micó
 format:
+  html:
+    toc: true
+    toc-title: Índice
+    toc-depth: 4
+    toc-location: left
+    number-sections: true
   pdf:
     toc: true
-    toc-depth: 3
+    toc-title: Índice
+    toc-depth: 4
     number-sections: true
 lang: es
 ---
@@ -44,36 +51,38 @@ Asimismo, también se  puede reconocer la heterogeneidad temporal, eventos que o
 - **El tipo de instituto** (`type_id` (de `high_schools`))
 - **La comarca del instituto** (`region` (de `municipalities`))
 
-### Modelo formal
+### Estrategia de modelización
 
-**Variables explicativas:**
+El trabajo aborda **dos preguntas complementarias** que requieren especificaciones distintas:
 
-- **La media de bachillerato** (`average_bach` (de `high_school_marks`))
-- **La diferencia de las medias de bachillerato y la PAU** (`diff_average_bach_pau` (de `high_school_marks`))
-- **Los presentados** (`candidates` (de `high_school_marks`))
-- **El coeficiente de variación de las notas de bachillerato** (`coeff_variation_bach` (de `high_school_marks`))
-- **El tipo de instituto** (`type_id` (de `high_schools`))
-- **La comarca del instituto** (`region` (de `municipalities`))
+1. **Modelo 1 — FE *within*:** ¿cómo afectan los cambios internos de un mismo instituto a la evolución de sus resultados? Aquí solo se incluyen variables que varían en el tiempo, ya que las características invariantes del centro quedan absorbidas por $\eta_i$.
+2. **Modelo 2 — RE *twoways* (o Hausman-Taylor):** ¿qué factores explican las diferencias estructurales *entre* institutos? Aquí se reincorporan variables invariantes en el tiempo como `type_id` y `region`.
 
+En este documento desarrollamos el **Modelo 1**.
+
+## Modelo 1
+
+### Especificación formal
 
 $$
-\text{pass\_pct}_{it} = \beta_1 \text{avg\_bach}_{it} + \beta_2 \text{candidates}_{it} + \beta_3 \text{coeff\_var}_{it} + \eta_i + v_{it}
+\text{pass\_pct}_{it} = \beta_1 \text{avg\_bach}_{it} + \beta_2 \log(\text{candidates}_{it}) + \beta_3 \text{coeff\_var}_{it} + \eta_i + v_{it}
 $$
 
 Donde:
 
 - $i = 1, \dots, N$ identifica el instituto.
 - $t = 1, \dots, T$ identifica el año.
-- $\alpha$ representa el término constante.
 - $\beta_1, \beta_2, \beta_3$ son los coeficientes asociados a las variables explicativas.
-- $\eta_i$ representa los efectos fijos específicos de cada instituto.
+- $\eta_i$ representa los efectos fijos específicos de cada instituto (heterogeneidad no observada).
 - $v_{it}$ es el término de error idiosincrático.
 
-## Código
+La variable `diff_average_bach_pau` se descarta del modelo principal por su fuerte correlación con `average_bach`, lo que generaría problemas de colinealidad.a
 
-### Importación librerias
- 
+### Importación de librerías
+
 ```{r}
+#| message: false
+#| warning: false
 library(DBI)
 library(RSQLite)
 library(dbplyr)
@@ -93,7 +102,7 @@ high_schools      <- tbl(con, "high_schools")
 municipalities    <- tbl(con, "municipalities")
 ```
 
-### Construimos la consulta con dbplyr
+### Consulta de los datos con dbplyr
 
 Seleccionamos los datos únicamente de la convocatoria ordinariay excluimos a los centros privados, conservamos a los públicos y concertados
 
@@ -121,7 +130,7 @@ datos <- high_school_marks |>
   collect()
 ```
 
-### Declaración como panel
+### Declaración del panel
 
 ```{r}
 panel <- datos |>
@@ -129,7 +138,7 @@ panel <- datos |>
   pdata.frame(index = c("high_school_id", "year"))
 ```
 
-### Estimación de modelos y 
+### Estimación
 
 Aplicamos el logaritmo sobre los candidatos porque es una variable con mucho rango, existen cnetros más grandes que recurrentemente presentan a más de 100 alumnos mientras que otros más pequeños que presentan de media 4 o 5 al año
 
@@ -171,10 +180,10 @@ summary(re)
 
 El test de Hausman presenta un estadístico $\chi^2$ de `r round(hausman_test$statistic, 3)` y un *p-value* de `r signif(hausman_test$p.value, 3)`.
 
-Con un nivel de $\alpha = 0.05$, podemos afirmar que existen evidencias significativas para rechazar la hipótesis nula, por lo que seleccionamos el modelo de efectos fijos.
+Con un nivel de $\alpha = 0.05$ rechazamos la hipótesis nula, lo que indica que existen diferencias sistemáticas entre los estimadores FE y RE: la heterogeneidad no observada $\eta_i$ está correlacionada con los regresores. Por tanto, el estimador RE sería inconsistente y seleccionamos el **modelo de efectos fijos** para responder a la pregunta *within*.
 
 
-#### Otros test
+#### Otros tests
 ```{r}
 
 # Heterocedasticidad
@@ -200,7 +209,7 @@ El test CD de Pesaran contrasta la independencia transversal entre individuos. E
 (Todos con $\alpha = 0.05$)
 
 
-### Corrección de la inferencia
+#### Corrección de la inferencia
 
 
 Como se aprecia la existencia de heterocedasticidad y autocorrelación temporal en los errores, los errores estándar clásicos pueden no ser consistentes, afectando así a la validez de los contrastes de hipótesis y de los niveles de significación obtenidos. Por ello, se emplea una versión robusta de la matriz de varianzas-covarianzas, que corrige simultáneamente la heterocedasticidad y la autocorrelación intra-individuo, permitiendo realizar una inferencia estadística más fiable.
@@ -218,8 +227,38 @@ fe_robust <- coeftest(
 fe_robust
 ```
 
+#### Interpretación
 
-### Cerramos la conexión
+```{r}
+# Extraemos coeficientes y p-valores robustos para usarlos en el texto
+b_avg     <- fe_robust["average_bach", "Estimate"]
+p_avg     <- fe_robust["average_bach", "Pr(>|t|)"]
+b_cand    <- fe_robust["log(candidates)", "Estimate"]
+p_cand    <- fe_robust["log(candidates)", "Pr(>|t|)"]
+b_cv      <- fe_robust["coeff_variation_bach", "Estimate"]
+p_cv      <- fe_robust["coeff_variation_bach", "Pr(>|t|)"]
+r2_within <- summary(fe)$r.squared["rsq"]
+```
+
+Tras aplicar la corrección robusta, las tres variables explicativas mantienen su significatividad al nivel $\alpha = 0.05$. La lectura de los coeficientes es la siguiente:
+
+- **`average_bach`** ($\hat{\beta}_1 =$ `r round(b_avg, 4)`, *p-value* = `r signif(p_avg, 3)`) presenta un efecto positivo sobre la tasa de aprobados. Cuando un mismo instituto eleva su media de bachillerato en un punto, la proporción de aprobados en la PAU aumenta aproximadamente `r round(b_avg*100, 2)` puntos porcentuales. Esto resulta coherente, ya que una cohorte mejor preparada en bachillerato llega a la PAU en mejores condiciones.
+- **`log(candidates)`** ($\hat{\beta}_2 =$ `r round(b_cand, 4)`, *p-value* = `r signif(p_cand, 3)`) presenta un efecto negativo. Cuando un mismo instituto presenta a más alumnos a la PAU, la tasa de aprobados tiende a reducirse ligeramente. Una posible explicación es que al aumentar el número de presentados se incorporan alumnos con un perfil académico más heterogéneo, mientras que con grupos pequeños el centro tiende a presentar únicamente a los alumnos con mayores garantias de aprobar.
+- **`coeff_variation_bach`** ($\hat{\beta}_3 =$ `r round(b_cv, 4)`, *p-value* = `r signif(p_cv, 3)`) presenta un efecto negativo. Cuanto mayor es la dispersión interna de las notas de bachillerato dentro del centro en un año dado, menor es la tasa de aprobados. Esto refuerza la idea anterior: las cohortes más homogéneas obtienen mejores resultados que las cohortes con mayor variabilidad.
+
+El $R^2$ *within* del modelo es de `r round(r2_within, 3)`, un valor reducido pero habitual en este tipo de especificaciones, donde la mayor parte de la variabilidad de la tasa de aprobados se explica por las diferencias estructurales entre institutos, no por los cambios internos de cada centro a lo largo del tiempo.
+
+La ecuación estimada queda como:
+
+$$
+\widehat{\text{pass\_pct}}_{it} = `r round(b_avg, 4)` \cdot \text{avg\_bach}_{it} `r sprintf("%+.4f", b_cand)` \cdot \log(\text{candidates}_{it}) `r sprintf("%+.4f", b_cv)` \cdot \text{coeff\_var}_{it} + \hat{\eta}_i
+$$
+
+Es importante recordar que estas conclusiones son de naturaleza ***within***, es decir, describen lo que ocurre cuando *un mismo instituto* cambia a lo largo del tiempo. **No** permiten afirmar nada sobre por qué unos centros obtienen sistematicamente mejores resultados que otros, ya que toda la heterogeneidad estructural entre institutos (titularidad, comarca, cultura del centro...) queda absorbida por $\eta_i$.
+
+Por ello, para responder a la pregunta de qué factores explican las diferencias *entre* institutos será necesario plantear el Modelo 2.
+
+### Cierre de la conexión
 
 ```{r}
 dbDisconnect(con)
