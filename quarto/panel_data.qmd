@@ -16,6 +16,8 @@ format:
     toc-depth: 4
     number-sections: true
 lang: es
+execute:
+  freeze: auto
 ---
 
 ## Motivación
@@ -99,7 +101,7 @@ library(leaflet)
 ### Conexión con la base de datos
 
 ```{r}
-con <- dbConnect(drv = RSQLite::SQLite(), dbname ="../data/notas-pau.db", flags= RSQLite::SQLITE_RO )
+#con <- dbConnect(drv = RSQLite::SQLite(), dbname ="../data/notas-pau.db", flags= RSQLite::SQLITE_RO )
 
 high_school_marks <- tbl(con, "high_school_marks")
 high_schools      <- tbl(con, "high_schools")
@@ -558,10 +560,10 @@ nombres_centros <- high_schools |>
   select(high_school_id = id, centro = name) |>
   collect()
 
-# Nota media bruta de la PAU de cada centro
+# Nota media de bachillerato (nivel de entrada) de cada centro
 media_bruta <- datos |>
   group_by(high_school_id) |>
-  summarise(media_pau = mean(average_compulsory_pau, na.rm = TRUE), .groups = "drop")
+  summarise(media_bach = mean(average_bach, na.rm = TRUE), .groups = "drop")
 
 tabla_eta <- fe_pau_eta |>
   left_join(nombres_centros, by = "high_school_id") |>
@@ -569,8 +571,8 @@ tabla_eta <- fe_pau_eta |>
   transmute(
     Centro       = centro,
     Titularidad  = if_else(type_id == "0", "Público", "Concertado"),
-    `Nota media PAU`    = round(media_pau, 3),
-    `Efecto fijo (eta)` = round(eta, 3)
+    `Nota media Bachillerato` = round(media_bach, 3),
+    `Efecto fijo (eta)`       = round(eta, 3)
   ) |>
   arrange(desc(`Efecto fijo (eta)`))
 
@@ -582,7 +584,7 @@ datatable(
 )
 ```
 
-Los centros situados en lo alto de la tabla son aquellos que, a igualdad de media de bachillerato, tamaño y dispersión, obtienen sistemáticamente mejores notas medias en la PAU; los del extremo inferior, lo contrario. Esta diferencia recoge la calidad estructural no observada de cada centro.
+Los centros situados en lo alto de la tabla son aquellos que, a igualdad de media de bachillerato, tamaño y dispersión, obtienen sistemáticamente mejores notas medias en la PAU; los del extremo inferior, lo contrario. Esta diferencia recoge la calidad estructural no observada de cada centro. La columna de **nota media de bachillerato** se incluye como referencia del *nivel de entrada* del alumnado: comparándola con el efecto fijo se aprecia que ambos no van necesariamente de la mano.
 
 ##### Distribución geográfica de los efectos fijos
 
@@ -618,46 +620,46 @@ leaflet(mapa_eta) |>
 
 Cada punto es un instituto, coloreado según su efecto fijo: los tonos verdes señalan centros con un nivel base de nota más alto del que predicen sus variables de entrada, y los rojos lo contrario. Pasando el cursor sobre cada punto se muestra el nombre del centro y su valor de $\hat{\eta}_i$.
 
-##### Valor añadido frente a nota media bruta
+##### Valor añadido frente a nivel de entrada (bachillerato)
 
-Es importante no confundir la **nota media bruta** de un centro con su **efecto fijo** $\hat{\eta}_i$. La media bruta mezcla dos componentes: el nivel de entrada del alumnado (recogido sobre todo por `average_bach`) y la aportación propia del centro. El efecto fijo aísla justamente esa segunda parte. Por eso **no es lo mismo** un centro con media 5 y $\hat{\eta}_i=+1$ —que rinde muy por encima de lo esperable dado su alumnado— que uno con media 7 y $\hat{\eta}_i\approx 0$ —cuya buena media se explica por la entrada, no por un plus del centro—.
+Es importante no confundir el **nivel de entrada** del alumnado de un centro —su **nota media de bachillerato**— con su **efecto fijo** $\hat{\eta}_i$. La nota de bachillerato refleja con qué alumnado parte el centro; el efecto fijo aísla lo que el centro **aporta** una vez descontado ese punto de partida. La pregunta clave es: *¿los centros que reciben mejores alumnos aportan además más valor, o son cosas independientes?* Por eso **no es lo mismo** un centro con bachillerato medio 5 y $\hat{\eta}_i=+1$ —que rinde muy por encima de lo esperable dado su alumnado— que uno con bachillerato medio 7 y $\hat{\eta}_i\approx 0$ —cuya buena nota se explica por la entrada, no por un plus del centro—.
 
 ```{r}
-# Nota media bruta de la PAU de cada centro
+# Nota media de bachillerato (nivel de entrada) de cada centro
 media_bruta <- datos |>
   group_by(high_school_id) |>
-  summarise(media_pau = mean(average_compulsory_pau, na.rm = TRUE), .groups = "drop")
+  summarise(media_bach = mean(average_bach, na.rm = TRUE), .groups = "drop")
 
 va <- fe_pau_eta |>
   left_join(media_bruta, by = "high_school_id")
 
-# Correlación entre nota media bruta y efecto fijo
-cor_va <- cor(va$media_pau, va$eta, use = "complete.obs")
+# Correlación entre nota media de bachillerato y efecto fijo
+cor_va <- cor(va$media_bach, va$eta, use = "complete.obs")
 ```
 
 ```{r}
 #| label: fig-fe-pau-valor-anadido
-#| fig-cap: "Nota media bruta de la PAU de cada centro frente a su efecto fijo $\\hat{\\eta}_i$ (valor añadido). Las líneas marcan la mediana de la nota media y el cero del efecto fijo."
-ggplot(va, aes(x = media_pau, y = eta)) +
+#| fig-cap: "Nota media de bachillerato (nivel de entrada) de cada centro frente a su efecto fijo $\\hat{\\eta}_i$ (valor añadido). Las líneas marcan la mediana de la nota de bachillerato y el cero del efecto fijo."
+ggplot(va, aes(x = media_bach, y = eta)) +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
-  geom_vline(xintercept = median(va$media_pau), linetype = "dashed", colour = "grey50") +
+  geom_vline(xintercept = median(va$media_bach), linetype = "dashed", colour = "grey50") +
   geom_point(aes(colour = eta), alpha = 0.7, size = 1.6) +
   scale_colour_distiller(palette = "RdYlGn", direction = 1) +
   geom_smooth(method = "lm", se = FALSE, colour = "steelblue", linewidth = 0.6) +
-  labs(x = "Nota media bruta de la PAU del centro",
+  labs(x = "Nota media de bachillerato del centro (nivel de entrada)",
        y = expression(hat(eta)[i]~"(efecto fijo / valor añadido)"),
        colour = expression(hat(eta)[i])) +
   theme_minimal()
 ```
 
-La correlación entre ambas medidas es de `r round(cor_va, 3)`: existe relación —los centros con mejor nota media tienden a tener mayor efecto fijo—, pero **dista de ser perfecta**, lo que confirma que no son intercambiables. Los cuadrantes del gráfico tienen una lectura directa:
+La correlación entre el nivel de entrada y el efecto fijo es de `r round(cor_va, 3)`: existe relación —los centros que reciben alumnado con mejor nota de bachillerato tienden a tener mayor efecto fijo—, pero **dista de ser perfecta**, lo que confirma que entrada y aportación del centro **no son lo mismo**. Los cuadrantes del gráfico tienen una lectura directa:
 
-- **Arriba a la izquierda** (media baja, $\hat{\eta}_i$ alto): centros que **aportan mucho valor** pese a partir de un alumnado con peor nota; son los casos más interesantes desde el punto de vista educativo.
-- **Arriba a la derecha** (media alta, $\hat{\eta}_i$ alto): centros excelentes tanto en entrada como en aportación.
-- **Abajo a la derecha** (media alta, $\hat{\eta}_i$ bajo): centros con buena nota media que se explica por la calidad de su alumnado más que por un plus del propio centro.
-- **Abajo a la izquierda** (media baja, $\hat{\eta}_i$ bajo): centros con resultados bajos en ambos sentidos.
+- **Arriba a la izquierda** (bachillerato bajo, $\hat{\eta}_i$ alto): centros que **aportan mucho valor** pese a partir de un alumnado con peor nota de entrada; son los casos más interesantes desde el punto de vista educativo.
+- **Arriba a la derecha** (bachillerato alto, $\hat{\eta}_i$ alto): centros excelentes tanto en el alumnado que reciben como en lo que aportan.
+- **Abajo a la derecha** (bachillerato alto, $\hat{\eta}_i$ bajo): centros que parten de buen alumnado pero **no añaden un plus** propio; sus buenos resultados se explican por la entrada.
+- **Abajo a la izquierda** (bachillerato bajo, $\hat{\eta}_i$ bajo): centros con resultados bajos tanto en entrada como en aportación.
 
-Esta distinción es la que justifica usar el efecto fijo, y no la nota media bruta, como medida de la calidad estructural del centro.
+Esta distinción es la que justifica usar el efecto fijo, y no la nota de partida del alumnado, como medida de la calidad estructural del centro.
 
 ##### ¿Influye la ubicación en el efecto fijo?
 
@@ -689,15 +691,40 @@ geo_eta <- fe_pau_eta |>
 m_coord <- lm(eta ~ latitude + longitude,            data = geo_eta)
 m_prov  <- lm(eta ~ provincia,                        data = geo_eta)
 m_com   <- lm(eta ~ comarca,                          data = geo_eta)
+m_cp    <- lm(eta ~ factor(postal_code),             data = geo_eta)
 m_full  <- lm(eta ~ latitude + longitude + comarca,   data = geo_eta)
 
 r2_geo <- tibble(
   `Especificación` = c("Coordenadas (lat + lon)", "Provincia",
-                       "Comarca", "Coordenadas + comarca"),
-  `R²` = round(c(summary(m_coord)$r.squared, summary(m_prov)$r.squared,
-                 summary(m_com)$r.squared,   summary(m_full)$r.squared), 3)
+                       "Comarca", "Código postal", "Coordenadas + comarca"),
+  `R²`          = round(c(summary(m_coord)$r.squared, summary(m_prov)$r.squared,
+                          summary(m_com)$r.squared,  summary(m_cp)$r.squared,
+                          summary(m_full)$r.squared), 3),
+  `R² ajustado` = round(c(summary(m_coord)$adj.r.squared, summary(m_prov)$adj.r.squared,
+                          summary(m_com)$adj.r.squared,  summary(m_cp)$adj.r.squared,
+                          summary(m_full)$adj.r.squared), 3)
 )
 r2_geo
+```
+
+```{r}
+#| label: fig-fe-pau-ubicacion
+#| fig-cap: "Fracción de la varianza del efecto-centro $\\hat{\\eta}_i$ explicada por la ubicación, según la granularidad geográfica (R² ajustado, que penaliza el exceso de parámetros del código postal)."
+r2_ubicacion <- tibble(
+  nivel = c("Coordenadas", "Provincia", "Comarca", "Código postal"),
+  r2    = c(summary(m_coord)$adj.r.squared, summary(m_prov)$adj.r.squared,
+            summary(m_com)$adj.r.squared,   summary(m_cp)$adj.r.squared)
+)
+
+ggplot(r2_ubicacion, aes(x = reorder(nivel, r2), y = r2)) +
+  geom_col(fill = "steelblue", alpha = 0.85, width = 0.65) +
+  geom_text(aes(label = scales::percent(r2, accuracy = 0.1)),
+            hjust = -0.1, size = 4) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0.15))) +
+  labs(x = NULL, y = "Varianza del efecto-centro explicada (R² ajustado)") +
+  theme_minimal()
 ```
 
 ```{r}
@@ -705,7 +732,7 @@ r2_geo
 summary(m_coord)$coefficients
 ```
 
-La comarca explica un `r round(100*summary(m_com)$r.squared, 1)` % de la variabilidad de los efectos fijos, frente al `r round(100*summary(m_coord)$r.squared, 1)` % que captan las coordenadas y el `r round(100*summary(m_prov)$r.squared, 1)` % de la provincia. Es decir, **la ubicación sí influye**, y lo hace sobre todo a escala comarcal: el detalle de la comarca aporta mucha más información que un simple gradiente de coordenadas o la división provincial. En cuanto al gradiente espacial, la latitud presenta un efecto `r if_else(coef(m_coord)["latitude"] > 0, "positivo (mejores resultados hacia el norte)", "negativo (mejores resultados hacia el sur)")` y la longitud un efecto `r if_else(coef(m_coord)["longitude"] > 0, "positivo (mejores hacia el este/litoral)", "negativo (mejores hacia el oeste/interior)")`.
+La comarca explica un `r round(100*summary(m_com)$r.squared, 1)` % de la variabilidad de los efectos fijos, frente al `r round(100*summary(m_coord)$r.squared, 1)` % que captan las coordenadas y el `r round(100*summary(m_prov)$r.squared, 1)` % de la provincia. El **código postal**, mucho más granular, alcanza un R² bruto del `r round(100*summary(m_cp)$r.squared, 1)` %, pero ese ajuste es en gran parte aparente: al penalizar por el número de parámetros, su R² ajustado cae al `r round(100*summary(m_cp)$adj.r.squared, 1)` % (frente al `r round(100*summary(m_com)$adj.r.squared, 1)` % de la comarca), señal de que un detalle tan fino *sobreajusta* en lugar de capturar señal generalizable. Es decir, **la ubicación sí influye**, y lo hace sobre todo a escala comarcal: el detalle de la comarca aporta mucha más información que un simple gradiente de coordenadas, la división provincial o el código postal. En cuanto al gradiente espacial, la latitud presenta un efecto `r if_else(coef(m_coord)["latitude"] > 0, "positivo (mejores resultados hacia el norte)", "negativo (mejores resultados hacia el sur)")` y la longitud un efecto `r if_else(coef(m_coord)["longitude"] > 0, "positivo (mejores hacia el este/litoral)", "negativo (mejores hacia el oeste/interior)")`.
 
 ```{r}
 #| label: fig-fe-pau-comarca
@@ -798,7 +825,7 @@ Por ello empleamos el estimador de **Wallace-Hussain** (`random.method = "walhus
 
 ```{r}
 re_tw <- plm(
-  pass_percentatge ~ average_bach + log(candidates) + coeff_variation_bach + type_id + region,
+  average_compulsory_pau ~ average_bach + log(candidates) + coeff_variation_bach + type_id + region,
   data = panel,
   model = "random",
   effect = "twoways",
@@ -806,7 +833,7 @@ re_tw <- plm(
 )
 
 fe_tw <- plm(
-  pass_percentatge ~ average_bach + log(candidates) + coeff_variation_bach,
+  average_compulsory_pau ~ average_bach + log(candidates) + coeff_variation_bach,
   data = panel,
   model = "within",
   effect = "twoways",
@@ -834,4 +861,28 @@ re_tw_robust <- coeftest(
   )
 )
 re_tw_robust
+```
+
+
+```{r}
+# Extraer efectos aleatorios
+time_effects <- ranef(re_tw, effect = "time")
+
+# Data frame
+df_time <- data.frame(
+  year   = as.numeric(names(time_effects)),
+  effect = as.numeric(time_effects)
+)
+
+library(ggplot2)
+
+ggplot(df_time, aes(x = year, y = effect)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  labs(
+    x = "Año",
+    y = "Efecto temporal",
+    title = "Efectos temporales estimados (RE twoways)"
+  ) +
+  theme_minimal()
 ```

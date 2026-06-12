@@ -1,0 +1,22 @@
+.corner-logo {
+  position: fixed;
+  height: 90px;
+  z-index: 50;
+  display: none;
+}
+.title-active .corner-logo {
+  display: block;
+}
+.corner-logo.top-left     { top: 20px;    left: 20px; }
+.corner-logo.top-right    { top: 20px;    right: 20px; }
+.corner-logo.bottom-left  { bottom: 20px; left: 20px; }
+.corner-logo.bottom-right { bottom: 20px; right: 20px; }
+
+.reveal .date::first-letter {
+  text-transform: uppercase;
+}
+
+.reveal .smalltitle h1 {
+  font-size: 1.4em !important;
+  text-transform: none;
+}

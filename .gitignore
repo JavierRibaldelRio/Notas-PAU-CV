@@ -29,6 +29,10 @@ quarto/*.log
 quarto/*.toc
 quarto/*.aux
 quarto/*.rmarkdown
-quarto/*/
+quarto/*
+!quarto/img
+!quarto/*.qmd 
+!quarto/*.R 
+!quarto/*.css 
 
 golem_app/inst/app/data
